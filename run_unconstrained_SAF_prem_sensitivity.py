@@ -26,10 +26,6 @@ blend = 0 #Set to zero to relax the SAF blend requirement constraint
 #Create supply chain model - Scenario 1, upgrading at mills only, blend at refinery or airport, maximize profit, only meet SAF demand
 m = create_supply_chain_model(data, saf_prem, eth_prem, blend, max_saf_capacity, profit_obj = True, grass_roots_factor=0.5, breakpoints=10, ref_blend=True)
 
-#Fix to no SAF capacity at all airports
-for i in m.AIRPORTS:
-    m.z[i].fix(0)
-
 #Fix to no SAF capacity at all refineries
 for i in m.REFINERIES:
    m.y_ref[i].fix(0)

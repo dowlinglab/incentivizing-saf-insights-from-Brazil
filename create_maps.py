@@ -16,7 +16,6 @@ def create_model_map(results_folder1,results_folder2):
 
     # Load the CSV files and the Excel files
     mill_to_mill_volumes_path = results_dir + '/mill_to_mill_volumes.csv'
-    mill_to_airport_volumes_path = results_dir + '/mill_to_airport_volumes.csv'
     mill_to_refinery_path = results_dir + '/mill_to_ref_vol_saf.csv'
     mill_to_ref_path_eth = results_dir + '/mill_to_ref_vol_eth.csv'
     ref_to_airport_path = results_dir + '/ref_to_air_vol_saf.csv'
@@ -26,7 +25,6 @@ def create_model_map(results_folder1,results_folder2):
 
     # Load the volume data ensuring proper decimal handling
     mill_to_mill_volumes = pd.read_csv(mill_to_mill_volumes_path, delimiter=',', decimal='.')
-    mill_to_airport_volumes = pd.read_csv(mill_to_airport_volumes_path, delimiter=',', decimal='.')
     mill_to_ref_volumes = pd.read_csv(mill_to_refinery_path, delimiter=',', decimal='.')
     mill_to_ref_volumes_eth = pd.read_csv(mill_to_ref_path_eth, delimiter=',', decimal='.')
     ref_to_air_volumes = pd.read_csv(ref_to_airport_path, delimiter=',', decimal='.')
@@ -72,8 +70,8 @@ def create_model_map(results_folder1,results_folder2):
     ref_airport_line_layer = folium.FeatureGroup(name="Blended SAF Supply Lines (Green)").add_to(m)
 
     # Get mills (from columns) and airports (from the 'volumes' column)
-    mills = mill_to_airport_volumes.columns[2:]  # Mills are in the columns (skipping the first column 'volumes')
-    airports = mill_to_airport_volumes['volumes'].values  # Airports are in the 'volumes' column
+    mills = mills_lat_lon['Mills'].values  
+    airports = airports_lat_lon['NOME'].values
     refineries = refineries_lat_lon['name'].values
 
     # Function to normalize line thickness
@@ -84,8 +82,6 @@ def create_model_map(results_folder1,results_folder2):
 
     # Convert to numeric and handle non-numeric values as NaN
     mill_to_mill_volumes_numeric = mill_to_mill_volumes.iloc[:, 1:].apply(pd.to_numeric, errors='coerce')
-    mill_to_airport_volumes_numeric = mill_to_airport_volumes.iloc[:, 2:].apply(pd.to_numeric, errors='coerce')
-    # print(mill_to_airport_volumes)
 
     mill_to_ref_vol_numeric = mill_to_ref_volumes.iloc[:, 2:].apply(pd.to_numeric, errors='coerce')
 
@@ -97,13 +93,9 @@ def create_model_map(results_folder1,results_folder2):
 
     # Get min and max volumes for normalization
     ethanol_volumes = mill_to_mill_volumes_numeric.stack()
-    saf_volumes = mill_to_airport_volumes_numeric.stack()
 
     min_ethanol_volume, max_ethanol_volume = ethanol_volumes.min(), ethanol_volumes.max()
-    min_saf_volume, max_saf_volume = saf_volumes.min(), saf_volumes.max()
 
-    # Identify mills that send to airports
-    mills_sending_to_airports = mill_to_airport_volumes_numeric.columns[(mill_to_airport_volumes_numeric > 0).any(axis=0)].tolist()
     # Identify mills that send to other mills
     mills_sending_to_mills = mill_to_mill_volumes_numeric.columns[(mill_to_mill_volumes_numeric > 0).any(axis=0)].tolist()
     # Identify mills that send to refs
@@ -114,7 +106,7 @@ def create_model_map(results_folder1,results_folder2):
     refs_sending_to_airports = ref_to_air_vol_numeric.columns[(ref_to_air_vol_numeric > 0).any(axis=0)].tolist()
 
     # Mills that are in the data but don't send anything
-    inactive_mills = [mill for mill in mills if mill not in mills_sending_to_airports and mill not in mills_sending_to_mills and mill not in mills_sending_to_refs and mill not in mills_sending_eth_to_refs]
+    inactive_mills = [mill for mill in mills if mill not in mills_sending_to_mills and mill not in mills_sending_to_refs and mill not in mills_sending_eth_to_refs]
 
     inactive_refs = [ref for ref in refineries if ref not in refs_sending_to_airports]
 
@@ -205,25 +197,6 @@ def create_model_map(results_folder1,results_folder2):
                     popup=f"{volume} ethanol from {mill_from} to {mill_to}"
                 ).add_to(mill_mill_line_layer)
 
-    # Add lines for mill-to-airport volumes (SAF)
-    for i, row in mill_to_airport_volumes.iterrows():
-        airport = row['volumes']  # Get the name of the airport
-        if airport in airports_lat_lon_dict:  # Ensure the airport exists in the latitude/longitude data
-            coords_to = [airports_lat_lon_dict[airport]['Latitude'], airports_lat_lon_dict[airport]['Longitude']]
-            for mill, volume in row[2:].items():
-                volume = pd.to_numeric(volume, errors='coerce')
-                if volume > 0 and mill in mills_lat_lon_dict:  # Ensure the mill exists in the latitude/longitude data
-                    coords_from = [mills_lat_lon_dict[mill]['Latitude'], mills_lat_lon_dict[mill]['Longitude']]
-                    line_thickness = normalize_thickness(volume, min_saf_volume, max_saf_volume)
-                    folium.PolyLine(
-                        locations=[coords_from, coords_to],
-                        color="green",
-                        weight=line_thickness,  # Normalized line thickness
-                        popup=f"{volume} SAF from {mill} to {airport}"
-                    ).add_to(mill_airport_line_layer)
-
-    print(mill_to_ref_volumes)
-
     # Add lines for mill-to-ref volumes (SAF)
     for i, row in mill_to_ref_volumes.iterrows():
         refinery = row['volumes']  # Get the name of the airport
@@ -257,8 +230,6 @@ def create_model_map(results_folder1,results_folder2):
                         weight=2,  # Normalized line thickness
                         popup=f"{volume} ethanol from {mill} to {refinery}"
                     ).add_to(mill_to_ref_eth_line_layer)
-
-    print(ref_to_air_volumes)
 
     for i, row in ref_to_air_volumes.iterrows():
         airport = row['volumes']  # Get the name of the airport

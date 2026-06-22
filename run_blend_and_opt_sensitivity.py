@@ -35,10 +35,6 @@ for k in blend_range:
 
     #Specify SAF Premium Parameter
     m.blend_requirement= k
-    
-    #Fix to no saf capacity at all airports
-    for i in m.AIRPORTS:
-        m.z[i].fix(0)
 
     #Fix investments at refineries to 0 for Cases 1 and 3, comment out for Cases 2 and 4
     for i in m.REFINERIES:
@@ -97,65 +93,6 @@ for k in blend_range:
     mill_con = pd.DataFrame.from_dict(mill_connections)
     mill_con.to_csv(results_dir + "/mill_to_mill_connections.csv")
 
-    #Mill to Airport Volumes SAF
-    airport_volumes={}
-    airport_volumes['volumes'] = m.AIRPORTS
-
-    for i in m.MILLS:
-        airport_volumes[i] = []
-        for j in m.AIRPORTS:
-            if pyo.value(m.vol_saf_sold_mills_air[i,j])>1e-6:
-                airport_volumes[i].append(pyo.value(m.vol_saf_sold_mills_air[i,j]))
-            else:
-                airport_volumes[i].append(0)
-
-    air_vol = pd.DataFrame.from_dict(airport_volumes)
-    air_vol.to_csv(results_dir + "/mill_to_airport_volumes.csv")
-            
-    #Mill to Airport Connections SAF
-    airport_connections={}
-    airport_connections['connections'] = m.AIRPORTS
-
-    for i in m.MILLS:
-        airport_connections[i] = []
-        for j in m.AIRPORTS:
-            if pyo.value(m.vol_saf_sold_mills_air[i,j])>1e-6:
-                airport_connections[i].append(1)
-            else:
-                airport_connections[i].append(0)
-                
-    air_con = pd.DataFrame.from_dict(airport_connections)
-    air_con.to_csv(results_dir + "/mill_to_airport_connections.csv")
-
-    #Mill to Airport Volumes Ethanol
-    airport_volumes={}
-    airport_volumes['volumes'] = m.AIRPORTS
-
-    for i in m.MILLS:
-        airport_volumes[i] = []
-        for j in m.AIRPORTS:
-            if pyo.value(m.vol_eth_sold_air[i,j])>1e-6:
-                airport_volumes[i].append(pyo.value(m.vol_eth_sold_air[i,j]))
-            else:
-                airport_volumes[i].append(0)
-
-    air_vol = pd.DataFrame.from_dict(airport_volumes)
-    air_vol.to_csv(results_dir + "/mill_to_airport_volumes_eth.csv")
-            
-    #Mill to Airport Connections SAF
-    airport_connections={}
-    airport_connections['connections'] = m.AIRPORTS
-
-    for i in m.MILLS:
-        airport_connections[i] = []
-        for j in m.AIRPORTS:
-            if pyo.value(m.vol_eth_sold_air[i,j])>1e-6:
-                airport_connections[i].append(1)
-            else:
-                airport_connections[i].append(0)
-                
-    air_con = pd.DataFrame.from_dict(airport_connections)
-    air_con.to_csv(results_dir + "/mill_to_airport_connections_eth.csv")
 
     #Mill to Refinery Volumes Ethanol
     ref_volumes = {}
