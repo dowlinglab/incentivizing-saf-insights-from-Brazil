@@ -1,0 +1,36 @@
+# Conda environment to reproduce "Incentivizing Sustainable Aviation Fuel:
+# Supply Chain and Policy Insights from Brazil."
+#
+# The manuscript reports Pyomo v6.6.1 + Gurobi v10.0.3 on Linux (Notre Dame CRC).
+# This file pins Pyomo to 6.6.1 and the scientific stack to the same era
+# (numpy < 2, pandas 2.0) so the model builds identically on osx-arm64.
+#
+# Gurobi is NOT installed by conda here. The run scripts call
+# pyo.SolverFactory('gurobi'), which is Pyomo's LP-file/shell interface and
+# requires the `gurobi.sh` executable from a system Gurobi installation on PATH,
+# plus a full (non size-limited) license. See REPRODUCE.md.
+#
+#   conda env create -f environment.yml
+#   conda activate saf-brazil
+name: saf-brazil
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  # optimization
+  - pyomo=6.6.1
+  # data handling
+  - numpy=1.26
+  - pandas=2.0
+  - openpyxl=3.1
+  # plotting
+  - matplotlib=3.8
+  - matplotlib-scalebar
+  # geospatial / maps
+  - geopandas=0.14
+  - shapely=2.0
+  - pyproj
+  - folium=0.14
+  # notebooks
+  - jupyterlab
+  - ipykernel
