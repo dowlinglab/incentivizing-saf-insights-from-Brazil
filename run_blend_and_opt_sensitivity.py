@@ -1,63 +1,112 @@
-# from create_sc_model_with_demand import *
-from create_sc_model_full import *
-import os
-import pandas as pd
-import numpy as np
+"""Blend requirement and decision-making paradigm sensitivity study.
 
+Solves the supply chain model over a range of SAF blend requirements for one of
+the four case studies in the manuscript:
+
+  1  central planner (minimize total supply chain cost), ATJ capacity at mills
+  2  central planner (minimize total supply chain cost), ATJ capacity at refineries
+  3  investor (maximize total mill profits),             ATJ capacity at mills
+  4  investor (maximize total mill profits),             ATJ capacity at refineries
+
+Results are written to Case<N>/interest_mid_blend_<pct>/ next to this script.
+
+Examples:
+    python run_blend_and_opt_sensitivity.py --case 1
+    python run_blend_and_opt_sensitivity.py --case 3 --blends 0 0.5
+    python run_blend_and_opt_sensitivity.py --case 2 --results-dir Case2_rerun --quiet
+
+To reproduce all 24 manuscript instances (bash/zsh):
+    for c in 1 2 3 4; do python run_blend_and_opt_sensitivity.py --case $c; done
+"""
+import argparse
+import os
+
+import numpy as np
+import pandas as pd
+
+from create_sc_model_full import *
+
+#Case study definitions: objective sense, and which supply chain stage may invest in ATJ
+CASE_SETTINGS = {
+    1: {"profit_obj": False, "invest_at": "mills"},
+    2: {"profit_obj": False, "invest_at": "refineries"},
+    3: {"profit_obj": True,  "invest_at": "mills"},
+    4: {"profit_obj": True,  "invest_at": "refineries"},
+}
+
+parser = argparse.ArgumentParser(description=__doc__,
+                                 formatter_class=argparse.RawDescriptionHelpFormatter)
+parser.add_argument("--case", type=int, choices=sorted(CASE_SETTINGS), required=True,
+                    help="case study to run (1-4); see the description above")
+parser.add_argument("--blends", type=float, nargs="+", default=[0, .1, .2, .3, .4, .5],
+                    help="SAF blend requirements to solve, as fractions "
+                         "(default: 0 0.1 0.2 0.3 0.4 0.5)")
+parser.add_argument("--results-dir", default=None,
+                    help="output folder name (default: Case<N>)")
+parser.add_argument("--data", default="base_case_data_with_demands.xlsx",
+                    help="input data workbook")
+parser.add_argument("--saf-premium", type=float, default=0,
+                    help="SAF premium price, R$/m3 SAF (default: 0)")
+parser.add_argument("--eth-premium", type=float, default=0,
+                    help="ethanol premium price, R$/m3 ethanol (default: 0)")
+parser.add_argument("--max-saf-capacity", type=float, default=700000,
+                    help="maximum ATJ capacity per site, m3 ethanol (default: 700000)")
+parser.add_argument("--mip-gap", type=float, default=0.00003,
+                    help="Gurobi MIPGap (default: 0.00003, i.e. 0.003%%)")
+parser.add_argument("--quiet", action="store_true", help="suppress the solver log")
+args = parser.parse_args()
+
+case = CASE_SETTINGS[args.case]
+
+#Resolve paths relative to this script so the run works from any directory
 this_file_path = os.path.dirname(os.path.realpath(__file__))
 
+#Specify Input Data
+data = args.data if os.path.isabs(args.data) else os.path.join(this_file_path, args.data)
+
 # create a directory to save results
-results_dir1 = os.path.join(this_file_path, "Case1") #Update the name for each case study: Case1, Case2, Case3, Case4
-if not os.path.isdir(results_dir1):
-    os.mkdir(results_dir1)
+results_dir1 = os.path.join(this_file_path, args.results_dir or "Case" + str(args.case))
+os.makedirs(results_dir1, exist_ok=True)
 
-#Specify a blend range to iterate over
-blend_range = [0,.1,.2,.3,.4,.5] #0% to 50% SAF blend range, 0% is the reference point for each case study
+#Create supply chain model; profit_obj = True maximizes mill profits (Cases 3 and 4),
+#profit_obj = False minimizes total supply chain cost (Cases 1 and 2). The blend
+#requirement is initialized to 0 and set per iteration below.
+m = create_supply_chain_model(data, args.saf_premium, args.eth_premium, 0,
+                              args.max_saf_capacity, profit_obj = case["profit_obj"],
+                              grass_roots_factor=0.5, breakpoints=10, ref_blend=True)
 
-#Specify Input Data and Parameters
-data = 'base_case_data_with_demands.xlsx'
-saf_prem = 0 #No SAF premium
-eth_prem = 0 #No ethanol premium
-max_saf_capacity = 700000
-blend = 0 #Initialize blend to 0
+solver = pyo.SolverFactory('gurobi')
+solver.options['MIPGap'] = args.mip_gap
 
-#Create supply chain model, set profit_obj = True for Cases 3 and 4 and profit_obj = False for Cases 1 and 2
-m = create_supply_chain_model(data, saf_prem, eth_prem, blend, max_saf_capacity, profit_obj = False, grass_roots_factor=0.5, breakpoints=10, ref_blend=True)
-
-#Loop through the premium range
-p=0
-for k in blend_range: 
+#Loop through the blend range
+for k in args.blends:
     #Create a new directory to save results for each scenario/case
-    results_dir = os.path.join(results_dir1, "interest_mid_blend_" + str(p))
-    p = p+10 #add to the string to name each blend case
-    if not os.path.isdir(results_dir):
-        os.mkdir(results_dir)
+    results_dir = os.path.join(results_dir1,
+                               "interest_mid_blend_" + str(int(round(k * 100))))
+    os.makedirs(results_dir, exist_ok=True)
 
-    #Specify SAF Premium Parameter
+    #Specify SAF Blend Requirement Parameter
     m.blend_requirement= k
-    
+
     #Fix to no saf capacity at all airports
     for i in m.AIRPORTS:
         m.z[i].fix(0)
 
-    #Fix investments at refineries to 0 for Cases 1 and 3, comment out for Cases 2 and 4
-    for i in m.REFINERIES:
-       m.y_ref[i].fix(0)
-    
-    #Fix investments at mills to 0 for Cases 1 and 3, comment out for Cases 2 and 4
-    # for i in m.MILLS:
-    #    m.y[i].fix(0)  
-        
+    #Restrict ATJ investments to a single supply chain stage
+    if case["invest_at"] == "mills":
+        for i in m.REFINERIES:
+            m.y_ref[i].fix(0)
+    else:
+        for i in m.MILLS:
+            m.y[i].fix(0)
+
     #Set mill specific incetives to 0, not used for this analysis
     for i in m.MILLS:
         m.s[i].fix(0)
 
-    solver = pyo.SolverFactory('gurobi')
-
-    solver.options['MIPGap'] = 0.00003 #Fix MIP gap to 0.003%
-    
     #Solve the model
-    results = solver.solve(m, tee=True)
+    print("=== Case " + str(args.case) + ", blend requirement " + str(k), flush=True)
+    results = solver.solve(m, tee=not args.quiet)
 
     #Save Connection Data to CSV File
 
@@ -77,7 +126,7 @@ for k in blend_range:
                 mill_volumes[i].append(0)
                 
     mill_vol = pd.DataFrame.from_dict(mill_volumes)
-    mill_vol.to_csv(results_dir + "/mill_to_mill_volumes.csv")
+    mill_vol.to_csv(os.path.join(results_dir, "mill_to_mill_volumes.csv"))
 
     #Mill to Mill Connections
     mill_connections={}
@@ -95,7 +144,7 @@ for k in blend_range:
                 mill_connections[i].append(0)
 
     mill_con = pd.DataFrame.from_dict(mill_connections)
-    mill_con.to_csv(results_dir + "/mill_to_mill_connections.csv")
+    mill_con.to_csv(os.path.join(results_dir, "mill_to_mill_connections.csv"))
 
     #Mill to Airport Volumes SAF
     airport_volumes={}
@@ -110,7 +159,7 @@ for k in blend_range:
                 airport_volumes[i].append(0)
 
     air_vol = pd.DataFrame.from_dict(airport_volumes)
-    air_vol.to_csv(results_dir + "/mill_to_airport_volumes.csv")
+    air_vol.to_csv(os.path.join(results_dir, "mill_to_airport_volumes.csv"))
             
     #Mill to Airport Connections SAF
     airport_connections={}
@@ -125,7 +174,7 @@ for k in blend_range:
                 airport_connections[i].append(0)
                 
     air_con = pd.DataFrame.from_dict(airport_connections)
-    air_con.to_csv(results_dir + "/mill_to_airport_connections.csv")
+    air_con.to_csv(os.path.join(results_dir, "mill_to_airport_connections.csv"))
 
     #Mill to Airport Volumes Ethanol
     airport_volumes={}
@@ -140,7 +189,7 @@ for k in blend_range:
                 airport_volumes[i].append(0)
 
     air_vol = pd.DataFrame.from_dict(airport_volumes)
-    air_vol.to_csv(results_dir + "/mill_to_airport_volumes_eth.csv")
+    air_vol.to_csv(os.path.join(results_dir, "mill_to_airport_volumes_eth.csv"))
             
     #Mill to Airport Connections SAF
     airport_connections={}
@@ -155,7 +204,7 @@ for k in blend_range:
                 airport_connections[i].append(0)
                 
     air_con = pd.DataFrame.from_dict(airport_connections)
-    air_con.to_csv(results_dir + "/mill_to_airport_connections_eth.csv")
+    air_con.to_csv(os.path.join(results_dir, "mill_to_airport_connections_eth.csv"))
 
     #Mill to Refinery Volumes Ethanol
     ref_volumes = {}
@@ -170,7 +219,7 @@ for k in blend_range:
                 ref_volumes[i].append(0)
 
     ref_vol = pd.DataFrame.from_dict(ref_volumes)
-    ref_vol.to_csv(results_dir + "/mill_to_ref_vol_eth.csv")
+    ref_vol.to_csv(os.path.join(results_dir, "mill_to_ref_vol_eth.csv"))
 
     #Mill to Refinery Volumes SAF
     ref_volumes = {}
@@ -185,7 +234,7 @@ for k in blend_range:
                 ref_volumes[i].append(0)
 
     ref_vol = pd.DataFrame.from_dict(ref_volumes)
-    ref_vol.to_csv(results_dir + "/mill_to_ref_vol_saf.csv")
+    ref_vol.to_csv(os.path.join(results_dir, "mill_to_ref_vol_saf.csv"))
 
     #Refinery to Airports Volumes Blended SAF
     ref_volumes = {}
@@ -200,7 +249,7 @@ for k in blend_range:
                 ref_volumes[i].append(0)
 
     ref_vol = pd.DataFrame.from_dict(ref_volumes)
-    ref_vol.to_csv(results_dir + "/ref_to_air_vol_saf.csv")
+    ref_vol.to_csv(os.path.join(results_dir, "ref_to_air_vol_saf.csv"))
 
     #Other Important Results Data
     #Important Results Data Indexed by Mills
@@ -263,7 +312,7 @@ for k in blend_range:
         key_results['incentives'].append(pyo.value(m.s[i]))
 
     results = pd.DataFrame.from_dict(key_results)
-    results.to_csv(results_dir + '/key_results_mills.csv')
+    results.to_csv(os.path.join(results_dir, 'key_results_mills.csv'))
 
     #Important Results Data Indexed by Airports
     key_results={}
@@ -299,7 +348,7 @@ for k in blend_range:
         key_results['sugar'].append(pyo.value(m.p['sug']))
 
     results = pd.DataFrame.from_dict(key_results)
-    results.to_csv(results_dir + '/key_results_air.csv')
+    results.to_csv(os.path.join(results_dir, 'key_results_air.csv'))
 
     #Important Results Data Indexed by Refinery
     key_results={}
@@ -330,4 +379,4 @@ for k in blend_range:
         
 
     results = pd.DataFrame.from_dict(key_results)
-    results.to_csv(results_dir + '/key_results_ref.csv')
+    results.to_csv(os.path.join(results_dir, 'key_results_ref.csv'))

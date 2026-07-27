@@ -1,30 +1,58 @@
-# from create_sc_model_with_demand import *
-from create_sc_model_full import *
-import os
-import pandas as pd
-import numpy as np
+"""Case 5: SAF premium sensitivity with no mandated SAF blend requirement.
 
+Takes the investor perspective (maximize total mill profits) with no lower or
+upper bound on SAF production, and sweeps the SAF premium price to find the
+minimum premium at which SAF production becomes voluntarily attractive.
+
+Results are written to unconstrained_SAF/Case5/production.csv.
+
+Examples:
+    python run_unconstrained_SAF_prem_sensitivity.py
+    python run_unconstrained_SAF_prem_sensitivity.py --premiums 0 1 2 3 4 --quiet
+"""
+import argparse
+import os
+
+import numpy as np
+import pandas as pd
+
+from create_sc_model_full import *
+
+parser = argparse.ArgumentParser(description=__doc__,
+                                 formatter_class=argparse.RawDescriptionHelpFormatter)
+parser.add_argument("--premiums", type=float, nargs="+", default=None,
+                    help="SAF premium prices to sweep, R$/L "
+                         "(default: 0 to 4 in 41 steps)")
+parser.add_argument("--results-dir", default="unconstrained_SAF",
+                    help="output folder name (default: unconstrained_SAF)")
+parser.add_argument("--data", default="base_case_data_with_demands.xlsx",
+                    help="input data workbook")
+parser.add_argument("--eth-premium", type=float, default=0,
+                    help="ethanol premium price, R$/m3 ethanol (default: 0)")
+parser.add_argument("--max-saf-capacity", type=float, default=700000,
+                    help="maximum ATJ capacity per site, m3 ethanol (default: 700000)")
+parser.add_argument("--mip-gap", type=float, default=0.0005,
+                    help="Gurobi MIPGap; looser than elsewhere because the exact "
+                         "SAF investment locations do not matter here (default: 0.0005)")
+parser.add_argument("--quiet", action="store_true", help="suppress the solver log")
+args = parser.parse_args()
+
+#Resolve paths relative to this script so the run works from any directory
 this_file_path = os.path.dirname(os.path.realpath(__file__))
 
-# create a directory to save results
-results_dir1 = os.path.join(this_file_path, "unconstrained_SAF")
-if not os.path.isdir(results_dir1):
-    os.mkdir(results_dir1)
+#Specify Input Data
+data = args.data if os.path.isabs(args.data) else os.path.join(this_file_path, args.data)
 
 # create a directory to save results
-results_dir = os.path.join(results_dir1, "Case 5")
-if not os.path.isdir(results_dir):
-    os.mkdir(results_dir)
-    
-#Specify Input Data and Parameters
-data = 'base_case_data_with_demands.xlsx'
-saf_prem = 0 #Initialize SAF incentive to 0
-eth_prem = 0 #No ethanol premium
-max_saf_capacity = 700000
-blend = 0 #Set to zero to relax the SAF blend requirement constraint
+results_dir1 = os.path.join(this_file_path, args.results_dir)
+results_dir = os.path.join(results_dir1, "Case5")
+os.makedirs(results_dir, exist_ok=True)
 
-#Create supply chain model - Scenario 1, upgrading at mills only, blend at refinery or airport, maximize profit, only meet SAF demand
-m = create_supply_chain_model(data, saf_prem, eth_prem, blend, max_saf_capacity, profit_obj = True, grass_roots_factor=0.5, breakpoints=10, ref_blend=True)
+#Create supply chain model - Case 5, upgrading at mills only, blend at refinery or
+#airport, maximize mill profits. blend = 0 relaxes the SAF blend requirement.
+m = create_supply_chain_model(data, 0, args.eth_premium, 0, args.max_saf_capacity,
+                              profit_obj = True, grass_roots_factor=0.5,
+                              breakpoints=10, ref_blend=True)
 
 #Fix to no SAF capacity at all airports
 for i in m.AIRPORTS:
@@ -39,7 +67,7 @@ for i in m.MILLS:
     m.s[i].fix(0)
 
 
-prem_range = np.linspace(0,4,41)
+prem_range = np.linspace(0,4,41) if args.premiums is None else args.premiums
 result = {}
 result['SAF Production'] = []
 result['eth market'] = []
@@ -47,16 +75,17 @@ result['Total Cost'] = []
 result['Total Profit'] = []
 result['premium'] = []
 
+solver = pyo.SolverFactory('gurobi')
+solver.options['MIPGap'] = args.mip_gap
+
 #loop through the premium range
 for j in prem_range:
 
     #Specify SAF Premium Parameter
     m.saf_premium = j*1000 #Convert from $R/l to $R/m3
 
-    solver = pyo.SolverFactory('gurobi')
-
-    solver.options['MIPGap'] = 0.0005 #Increase the MIP gap since not worried about the exact location of SAF investments to improve solve time
-    results = solver.solve(m, tee=True)
+    print("=== SAF premium " + str(j) + " R$/L", flush=True)
+    results = solver.solve(m, tee=not args.quiet)
 
     #Sum the total SAF production
     saf = 0
@@ -76,6 +105,6 @@ for j in prem_range:
 
 
 results_df = pd.DataFrame.from_dict(result)
-results_df.to_csv(results_dir + '/production.csv')
+results_df.to_csv(os.path.join(results_dir, 'production.csv'))
 
 

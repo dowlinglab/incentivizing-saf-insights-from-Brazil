@@ -71,65 +71,91 @@ license at `~/gurobi.lic`.
 | `SensitivtyAnalysis.ipynb` | Figs. `additionalSAFcost`, `unconstrained_SAF`, `millspecficincentivestudy` |
 | `integercutanalysis.ipynb` | Figs. `integercutlocations`, `integercutlocationszoom` |
 
-## 4. The run scripts are not parameterized — edit them per case
+## 4. Running the studies
 
-`run_blend_and_opt_sensitivity.py` reproduces **one** case per invocation. To get
-all 24 instances it has to be edited and re-run four times:
+Every run script takes command-line arguments; nothing needs to be hand-edited.
+Use `--help` on any of them for the full list.
 
-| Case | Perspective | ATJ investment | `results_dir1` (line 10) | `profit_obj` (line 25) | fix investments |
-|---|---|---|---|---|---|
-| 1 | central planner | mills | `"Case1"` | `False` | `m.y_ref[i].fix(0)` (lines 44–45 active) |
-| 2 | central planner | refineries | `"Case2"` | `False` | `m.y[i].fix(0)` (uncomment lines 48–49, comment 44–45) |
-| 3 | investor | mills | `"Case3"` | `True` | `m.y_ref[i].fix(0)` |
-| 4 | investor | refineries | `"Case4"` | `True` | `m.y[i].fix(0)` |
+```bash
+# Cases 1-4, blends 0-50% (the 24 manuscript instances)
+for c in 1 2 3 4; do python run_blend_and_opt_sensitivity.py --case $c; done
 
-Same pattern elsewhere:
+# Ten alternative optima at 50% blend for Cases 1 and 3
+python run_integer_cuts.py --case 1
+python run_integer_cuts.py --case 3
 
-* `run_integer_cuts.py` — line 9 `results_dir1` and line 25 `profit_obj`
-  (`False` → Case 1, `True` → Case 3).
-* `run_mill_specific_incentives.py` — line 22 `saf_prem` and line 33 the output
-  folder name must be changed together, once per premium in
-  {0, 500, 1000, 1500, 2000, 2500, 3000}.
+# Mill-specific incentives, all seven SAF premiums in one invocation
+python run_mill_specific_incentives.py
 
-The scripts write into the committed results folders, so **back up or redirect
-`results_dir1` before re-running** if you want to keep the original numbers for
-comparison.
+# Case 5, SAF premium sweep with no blend requirement
+python run_unconstrained_SAF_prem_sensitivity.py
 
-## 5. Portability issues found on macOS
+# Interactive map of one solved design
+python run_create_maps.py --case 1 --blend 0.5
+```
 
-These are real blockers, not warnings.
+| Case | Perspective | ATJ investment | invocation |
+|---|---|---|---|
+| 1 | central planner (min cost) | mills | `--case 1` |
+| 2 | central planner (min cost) | refineries | `--case 2` |
+| 3 | investor (max mill profit) | mills | `--case 3` |
+| 4 | investor (max mill profit) | refineries | `--case 4` |
+
+By default the scripts write into the committed results folders. To keep the
+original numbers for comparison, redirect the output:
+
+```bash
+python run_blend_and_opt_sensitivity.py --case 1 --results-dir /tmp/rerun/Case1
+```
+
+`--results-dir` accepts an absolute path or a name relative to the script.
+
+Note that the per-mill results loop is slow — it re-evaluates the full
+`objective`, `profit_expression`, and `sc_cost_expression` for each of the 335
+mills, so writing `key_results_mills.csv` takes ~10 min, considerably longer than
+the solve itself on a fast machine.
+
+## 5. Portability
+
+The scripts and notebooks now use `os.path.join` or forward slashes throughout and
+resolve input data relative to the script, so they run on Windows, macOS, and
+Linux from any working directory. What had to be fixed:
 
 1. **Windows path separators in three notebooks.** `SensitivtyAnalysis.ipynb`,
-   `SupplyChainMaps.ipynb`, and `SupplyChainSummary.ipynb` build paths as
+   `SupplyChainMaps.ipynb`, and `SupplyChainSummary.ipynb` built paths as
    `this_file_path + '\\Case1\\interest_mid_blend_0\\key_results_mills.csv'`
-   where `this_file_path = os.getcwd()`. On macOS/Linux this yields a single
-   filename containing backslashes and raises `FileNotFoundError`. Every
-   `pd.read_csv` in those notebooks needs its `'\\'`/`'\'` replaced with `'/'`
-   (or `os.path.join`). `integercutanalysis.ipynb` is unaffected — it reads
-   `integer_cut_organized_data.xlsx` by relative path.
+   with `this_file_path = os.getcwd()`. On macOS/Linux that is a single filename
+   containing backslashes and raises `FileNotFoundError`. All 21 affected
+   `pd.read_csv` calls now use `/`. `integercutanalysis.ipynb` was unaffected.
 
-2. **`ne_50m_admin_0_countries.shp` is missing from the repo.** `create_maps.py`
-   line 44–45 does `gpd.read_file("ne_50m_admin_0_countries.shp")`, so
-   `run_create_maps.py` fails immediately. This is the Natural Earth 1:50m Admin 0
-   Countries shapefile (not redistributed here). Either add it, or substitute the
-   copy bundled with geopandas 0.14:
-   `gpd.read_file(gpd.datasets.get_path('naturalearth_lowres'))` — note the
-   bundled copy is 1:110m and its country-name column is `name`, not `NAME`.
-   Only the interactive HTML maps depend on this; **no manuscript figure does.**
-   `SupplyChainMaps.ipynb` and `integercutanalysis.ipynb` assign
-   `shapefile_path = 'ne_50m_admin_0_countries.shp'` but never read it — the
-   static maps use `gadm41_BRA_1.shp`, which is present.
+2. **`ne_50m_admin_0_countries.shp` was missing from the repo**, so
+   `run_create_maps.py` failed immediately on
+   `gpd.read_file("ne_50m_admin_0_countries.shp")`. That file is the Natural
+   Earth 1:50m Admin 0 Countries shapefile, which is not redistributed here.
+   Since the outline is only used to draw and bound Brazil, `create_maps.py` now
+   dissolves the GADM state boundaries in `gadm41_BRA_1.shp` (already in the
+   repo) instead — no external download, no deprecated
+   `geopandas.datasets` call. `SupplyChainMaps.ipynb` and
+   `integercutanalysis.ipynb` assigned `shapefile_path` but never read it, so
+   they needed no change.
 
 3. **`gadm41_BRA_1.prj` is absent**, so geopandas reports `crs=None`. Harmless —
-   both notebooks call `set_crs(epsg=4326)` explicitly before
-   `to_crs(epsg=5880)`.
+   the code calls `set_crs(epsg=4326)` explicitly before `to_crs(epsg=5880)`.
 
 4. **Output-folder name mismatch for Case 5.**
-   `run_unconstrained_SAF_prem_sensitivity.py` line 16 writes to
-   `unconstrained_SAF/Case 5/` (with a space), but the committed folder is
-   `unconstrained_SAF/Case5/` and `SensitivtyAnalysis.ipynb` reads
-   `unconstrained_SAF\Case5\production.csv`. Re-running the script creates a
-   second folder the notebook will not find.
+   `run_unconstrained_SAF_prem_sensitivity.py` wrote to
+   `unconstrained_SAF/Case 5/` (with a space) while the notebook reads
+   `unconstrained_SAF/Case5/`. Now both use `Case5`.
+
+5. **Implicit Pyomo component replacement.**
+   `run_mill_specific_incentives.py` redefined `m.pos_profs`, which
+   `create_supply_chain_model` already installs as `ind_profs >= 0`. Pyomo
+   silently replaced it with a warning; the replacement is now explicit via
+   `del_component`/`add_component`. Behaviour is unchanged — the mill profit
+   lower bound is raised from 0 to `reference_profit1b`.
+
+See [MISSING_FILES.md](MISSING_FILES.md) for what the repository still does not
+contain.
 
 ## 6. Model size does not match the manuscript
 
