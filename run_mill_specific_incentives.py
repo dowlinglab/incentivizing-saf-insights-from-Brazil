@@ -270,6 +270,9 @@ for saf_prem in args.saf_premiums:
     key_results['individual profit'] = []
     key_results['capacity'] = []
     key_results['incentives'] = []
+    #Incentive per litre of SAF (R$/L), which is what SensitivtyAnalysis.ipynb plots.
+    #Previously added to these CSVs by an undocumented post-processing step.
+    key_results['payment'] = []
 
     #These expressions are identical for every mill, airport and refinery. Evaluating
     #each once rather than once per index writes exactly the same values and saves
@@ -310,6 +313,9 @@ for saf_prem in args.saf_premiums:
         key_results['d'].append(pyo.value(m.x[i,'d']))
         key_results['capacity'].append(pyo.value(m.Sugarcane_Capacity[i]))
         key_results['incentives'].append(pyo.value(m.s[i]))
+        saf_volume = pyo.value(m.x[i,'saf'])
+        key_results['payment'].append(pyo.value(m.s[i]) / (saf_volume * 1000)
+                                      if saf_volume > 1e-6 else 0)
 
     results = pd.DataFrame.from_dict(key_results)
     results.to_csv(os.path.join(results_dir, 'key_results_mills.csv'))
