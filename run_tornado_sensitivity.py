@@ -73,6 +73,9 @@ parser.add_argument("--data", default="base_case_data_with_demands.xlsx")
 parser.add_argument("--max-saf-capacity", type=float, default=700000)
 parser.add_argument("--mip-gap", type=float, default=0.0005)
 parser.add_argument("--quiet", action="store_true")
+parser.add_argument("--dry-run", action="store_true",
+                    help="write the perturbed workbook and report every cell that "
+                         "differs from the base workbook, without solving")
 args = parser.parse_args()
 
 if not args.all and (args.parameter is None or args.multiplier is None):
@@ -84,22 +87,43 @@ results_dir1 = os.path.join(this_file_path, args.results_dir)
 
 
 def perturbed_workbook(parameter, multiplier, dest):
-    """Write a copy of the workbook with one quantity scaled. Every sheet is
-    round-tripped so the model reads an otherwise identical file."""
+    """Copy the workbook and scale exactly one cell.
+
+    Uses openpyxl on a byte copy rather than a pandas read/write round-trip: the
+    round-trip rewrites every float and silently changes ~14 unrelated distance
+    cells in their last bits (197.16558559999999 -> 197.1655856). Harmless
+    numerically, but it makes the perturbation impossible to audit.
+    """
+    import shutil
+
+    from openpyxl import load_workbook
+
     sheet, key, column = PARAMETERS[parameter]
-    sheets = pd.read_excel(data, sheet_name=None)
-    df = sheets[sheet]
     keycol = "product" if sheet == "prices" else "conversion_codes"
-    mask = df[keycol] == key
-    if not mask.any():
+
+    shutil.copyfile(data, dest)
+    wb = load_workbook(dest)
+    ws = wb[sheet]
+    headers = [c.value for c in ws[1]]
+    if keycol not in headers or column not in headers:
+        raise SystemExit(f"sheet {sheet!r} lacks {keycol!r} or {column!r}: {headers}")
+    kcol = headers.index(keycol) + 1
+    vcol = headers.index(column) + 1
+
+    target_row = None
+    for r in range(2, ws.max_row + 1):
+        if ws.cell(row=r, column=kcol).value == key:
+            target_row = r
+            break
+    if target_row is None:
         raise SystemExit(f"{key!r} not found in sheet {sheet!r}")
-    before = df.loc[mask, column].iloc[0]
-    df.loc[mask, column] = before * multiplier
+
+    cell = ws.cell(row=target_row, column=vcol)
+    before = cell.value
+    cell.value = before * multiplier
+    wb.save(dest)
     print(f"  {sheet}.{key}.{column}: {before:g} -> {before * multiplier:g} "
-          f"({multiplier:+.0%} of base)".replace("+1", "1"), flush=True)
-    with pd.ExcelWriter(dest, engine="openpyxl") as writer:
-        for name, frame in sheets.items():
-            frame.to_excel(writer, sheet_name=name, index=False)
+          f"(x{multiplier:g}, {multiplier - 1:+.0%})", flush=True)
     return dest
 
 
@@ -147,6 +171,37 @@ def run_scenario(parameter, multiplier):
     tmp = tempfile.mkdtemp(prefix="saf_perturbed_")
     workbook = perturbed_workbook(parameter, multiplier,
                                   os.path.join(tmp, "perturbed_input.xlsx"))
+    if args.dry_run:
+        sheet, key, column = PARAMETERS[parameter]
+        base = pd.read_excel(data, sheet_name=None)
+        pert = pd.read_excel(workbook, sheet_name=None)
+        intended, incidental = [], []
+        for name in base:
+            b, q = base[name], pert[name]
+            if b.shape != q.shape:
+                incidental.append((f"{name}: shape changed", float("inf")))
+                continue
+            for col in b.columns:
+                for r in range(len(b)):
+                    x, y = b[col].iloc[r], q[col].iloc[r]
+                    if pd.isna(x) and pd.isna(y):
+                        continue
+                    if x == y:
+                        continue
+                    rel = abs(y - x) / abs(x) if isinstance(x, float) and x else float("inf")
+                    desc = f"{name}[{col}][{r}]: {x!r} -> {y!r}"
+                    (intended if (name == sheet and col == column) else
+                     incidental).append((desc, rel))
+        print(f"  intended changes: {len(intended)}")
+        for d, _ in intended:
+            print(f"    {d}")
+        worst = max((r for _, r in incidental), default=0.0)
+        print(f"  incidental changes: {len(incidental)}, worst relative deviation {worst:.2e}")
+        print("    (Excel float re-serialisation; last-ULP only, no numerical effect)")
+        assert len(intended) == 1, "expected exactly one intended cell change"
+        assert worst < 1e-12, f"incidental change too large: {worst:.2e}"
+        return tag, float("nan")
+
     m = build(workbook)
     solver = pyo.SolverFactory('gurobi')
     solver.options['MIPGap'] = args.mip_gap
