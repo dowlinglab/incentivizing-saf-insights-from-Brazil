@@ -1,4 +1,16 @@
-# Reproduction run, 2026-07-27
+# Reproduction run, 2026-07-27 (confirmed 2026-07-29)
+
+> **Confirmed by an independent second run.** The whole suite was rerun on
+> 2026-07-29 under a different concurrency layout (five streams instead of two,
+> with the Case 5 sweep split across three processes and merged). It produced
+> results identical to those below: the same objectives, the same site-set changes
+> (Case 1 at 50% blend 7 → 11 mills, Case 2 at 50% 7 → 4 refineries), the same
+> Case 5 threshold of 2.6 R$/L, and the same integer-cut frequencies. **The
+> divergence from the committed results is deterministic on this platform, not
+> run-to-run thread jitter.** The 2026-07-29 artifacts are archived with checksums
+> and provenance — see [RECONCILIATION.md](RECONCILIATION.md). The 2026-07-27
+> artifacts were lost to `/tmp` being cleared; only these findings survived.
+
 
 Full rerun of every study in this repository on macOS/arm64 (Apple M1 Max, 10
 threads) with Gurobi 10.0.1 and Pyomo 6.6.1, compared against the committed

@@ -171,21 +171,33 @@ Cases 3 and 4 reproduce exactly.
 
 ## The archived reproduction results
 
-Kept **outside** this repository, so ~145 MB of regenerated CSVs do not enter the
+Kept **outside** this repository, so 69 MB of regenerated CSVs do not enter the
 published artifact:
 
 ```
 ~/DowlingLab/Papers/incentivizing-saf-repro-archive/2026-07-29/
-  results/      all regenerated CSVs (Cases 1-4, integer cuts, mill-specific, Case 5)
-  figures/      all 13 regenerated figures
-  notebooks/    the four notebooks as executed, outputs inline
-  provenance/   RUN_INFO.txt, conda-list.txt, environment-frozen.yml
-  logs/         the exact driver scripts and their stdout
-  MANIFEST.sha256
-  README.md
+  README.md           provenance, timings, and how to use the tools
+  results/            all regenerated CSVs, 615 files
+  figures/            all 13 regenerated figures
+  notebooks/          the four notebooks as executed, outputs inline
+  provenance/         RUN_INFO.txt, conda-list.txt, environment-frozen.yml
+  logs/               the driver scripts verbatim, their stdout, and comparison.txt
+  tools/              count_model_size.py, compare_to_committed.py, merge_case5.py
+  MANIFEST.sha256     669 files, all verifying
 ```
 
-An earlier run on 2026-07-27 produced equivalent artifacts but was written to
-`/private/tmp`, which macOS cleared before they could be archived. Its findings
-survive in `RERUN_REPORT.md` because they were committed; the raw files did not.
-**Do not stage reproduction output under `/tmp`.**
+`tools/count_model_size.py` is what settles checklist item 1 — point it at a
+recovered model and it prints MATCH or the delta against each of the manuscript's
+four counts. `tools/compare_to_committed.py` compares any two result trees, so it
+works for private-vs-public as well as rerun-vs-committed.
+
+**The archive is a stable baseline, not a single sample.** It is the second full
+rerun; an earlier one on 2026-07-27 used a different concurrency layout and
+produced identical results, including the same site-set changes and integer-cut
+frequencies. The divergence from the committed results is therefore reproducible
+rather than thread jitter, so a private-repo run that lands on the committed values
+would isolate the cause.
+
+That earlier run's raw artifacts were staged in `/private/tmp`, which macOS cleared
+before they could be archived; its findings survived only because they were
+committed to git. **Do not stage reproduction output under `/tmp`.**
