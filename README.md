@@ -1,69 +1,157 @@
 # incentivizing-saf-insights-from-brazil
-Supporting codes for "Incentivizing Sustainable Aviation Fuel: Supply Chain and Policy Insights from Brazil."
+
+Supporting codes for "Incentivizing Sustainable Aviation Fuel: Supply Chain and
+Policy Insights from Brazil."
+
+## Quick start
+
+```bash
+conda env create -f environment.yml
+conda activate saf-brazil
+python -m ipykernel install --user --name saf-brazil --display-name "Python (saf-brazil)"
+```
+
+Then reproduce any study — every script takes command-line arguments, so nothing
+needs to be hand-edited:
+
+```bash
+for c in 1 2 3 4; do python run_blend_and_opt_sensitivity.py --case $c; done
+python run_integer_cuts.py --case 1
+python run_integer_cuts.py --case 3
+python run_mill_specific_incentives.py
+python run_unconstrained_SAF_prem_sensitivity.py
+python run_tornado_sensitivity.py --all --bisect
+```
+
+Use `--results-dir` to write somewhere other than the committed result folders.
+[REPRODUCE.md](REPRODUCE.md) covers the environment in detail;
+[PROVENANCE.md](PROVENANCE.md) records what the original runs actually used.
 
 ## Dependencies
-The scripts in this repository build an optimization model via Pyomo (v6.6.1) and solve using Gurobi (v10.0.3).
 
-## Repository Content
-The content of this repository is detailed below:
-### Python Scripts
-create_sc_model_full: contains a function to create and initialize the optimization model
+Pyomo 6.6.1, and Gurobi via Pyomo's `SolverFactory('gurobi')` — which is the
+LP-file *shell* interface and needs the `gurobi.sh` executable from a system Gurobi
+install on `PATH`, plus a full (non size-limited) license. `pip install gurobipy`
+alone is not sufficient. Pinned versions are in `environment.yml`; note that
+`openpyxl` is required, since all input data is `.xlsx`.
 
-create_maps: contains a function to create interactive maps of the optimal supply chain designs
+Three Gurobi versions are on record for the published results: the manuscript names
+10.0.3, the CRC job script loads 11.0.2, and the solver logs report **12.0.2**. See
+[PROVENANCE.md](PROVENANCE.md).
 
-run_blend_and_opt_sensitivity: contains a script to run a sensitivty analysis varying the decision-making paradigm and SAF blend requirement solving instances of create_sc_model_full and collect results data
+## MIP gap, per study
 
-run_create_maps: contains a script to run create_maps for different case studies
+The manuscript quotes a single 0.003%; the scripts do not all use it.
 
-run_integer_cuts: contains a script to run an integer cut analysis on the optimal supply chain design and collect results data
+| study | MIPGap |
+|---|---|
+| Cases 1–4, blends 0–50% (`run_blend_and_opt_sensitivity.py`) | 3e-5 (0.003%) |
+| Integer cuts, Cases 1 and 3 (`run_integer_cuts.py`) | 3e-5 (0.003%) |
+| Mill-specific incentives (`run_mill_specific_incentives.py`) | 3e-4 (0.03%) |
+| Case 5 and tornado scenarios | 5e-4 (0.05%) |
 
-run_mill_specific_incentives: contains a script to run instances of create_sc_model_full where mill-specific incentives are a variable to be optimized and collect results data
+Solutions differ *within* these gaps. In particular the set and number of chosen
+investment sites is not unique for Cases 1 and 2 — see
+[RERUN_REPORT.md](RERUN_REPORT.md).
 
-run_unconstrained_SAF_prem_sensitivity: contains a script to run instances of create_sc_model_full with no required SAF production at various SAF premium prices and collect results data
+## Case studies
 
-### Jupyter Notebooks
-IntegerCutAnalysis: make plots to visualize the integer cut analysis results (maps)
+| Case | Decision maker | ATJ investment | Objective |
+|---|---|---|---|
+| 1 | central planner | sugarcane mills | minimize total supply chain cost |
+| 2 | central planner | refineries | minimize total supply chain cost |
+| 3 | investor | sugarcane mills | maximize total mill profits |
+| 4 | investor | refineries | maximize total mill profits |
+| 5 | investor, no blend requirement | sugarcane mills | maximize total mill profits |
 
-SensitivityAnalysis: make plots to visualize the incentive sensitivty study to production incentives (line plot), SAF premium prices (line plot), and mill-specific incentives (bar chart and line plot)
+## Python scripts
 
-SupplyChainMaps: make plots to visualize the optimal supply chain infrastructure locations for each case study (maps)
+| script | what it does |
+|---|---|
+| `create_sc_model_full.py` | builds and initializes the optimization model |
+| `create_maps.py` | interactive folium maps of an optimal design |
+| `run_blend_and_opt_sensitivity.py` | Cases 1–4 across SAF blend requirements (`--case`) |
+| `run_integer_cuts.py` | integer-cut (no-good cut) enumeration of alternative optima (`--case 1|3`) |
+| `run_mill_specific_incentives.py` | mill-specific incentives as decision variables, swept over SAF premium |
+| `run_unconstrained_SAF_prem_sensitivity.py` | Case 5: SAF premium sweep with no blend requirement |
+| `run_tornado_sensitivity.py` | Case 5 under ±20% parameter changes (Figure 10) |
+| `run_create_maps.py` | runs `create_maps` for a chosen case and blend |
+| `make_tornado.py` | builds Figure 10 from the scenario CSVs |
+| `model_statistics.py` | MILP size per formulation, against the manuscript and the solver logs |
+| `supply_chain_distances.py` | mass-distance per stage — the corrected Table 4 calculation |
+| `consolidate_integer_cuts.py` | builds `integer_cut_organized_data.xlsx` from the raw cuts |
 
-SupplyChainSummary: make plots to visualize the supply chain flows in the optimal design (line plot) and emissions sensitivity to ATJ technology (contour plot)
+## Jupyter notebooks
 
-### Folders
-Case1: results files from run_blend_and_opt_sensitivity for Case 1
+| notebook | figures |
+|---|---|
+| `SupplyChainSummary.ipynb` | `ninepanelproductsummary_pos_v2.png`, `fourpanelcostsummary.png`, `emissions_sensitivity.png` |
+| `SupplyChainMaps.ipynb` | `fourpanelinputdata.png` (+legend), `optimalsclocationszoom.png`, `optimaldesign_legend.png`, `optimaldesignmap50.png` |
+| `SensitivtyAnalysis.ipynb` | `additionalSAFcost.png`, `unconstrained_SAF.png`, `millspecficincentivestudy.png` |
+| `integercutanalysis.ipynb` | `integercutlocations.png`, `integercutlocationszoom.png` |
 
-Case2: results files from run_blend_and_opt_sensitivity for Case 2
+**Caveat.** `SupplyChainSummary.ipynb` cell 10 computes mass-distance as
+(Σ distances)(Σ volumes)ρ instead of Σ(volume × distance)ρ, and reproduces none of
+Table 4's entries. Use `supply_chain_distances.py` instead, which reproduces seven
+of the eight; see its docstring for why the eighth (Case 1 Stage 1) differs.
 
-Case3: results files from run_blend_and_opt_sensitivity for Case 3
+## Figure provenance
 
-Case4: results files from run_blend_and_opt_sensitivity for Case 4
+Not every manuscript figure comes from a notebook. Several are composed in
+PowerPoint from generated panels, and some are hand-drawn.
 
-integer_cuts_case1: results files from run_integer_cuts for Case 1
+| Fig. | manuscript file | source |
+|---|---|---|
+| 1 | `inputmaps_v4.png` | **composed** from `fourpanelinputdata.png` + `fourpanelinputdata_legend.png` |
+| 2 | `problemstatement.png` | **hand-drawn schematic**, no generating script |
+| 3 | `mill_pfd.png` | **hand-drawn schematic**, no generating script |
+| 4 | `ref_pfd.png` | **hand-drawn schematic**, no generating script |
+| 5 | `ninepanelproductsummary_pos_v2.eps` | `SupplyChainSummary.ipynb`, converted to EPS |
+| 6 | `emissions_v6.png` | `emissions_sensitivity.png`, relabelled |
+| 7 | `figure5_format.eps` | **composed** from `optimalsclocationszoom.png` + `optimaldesign_legend.png` |
+| 8 | `figure6_format.eps` | **composed** from `integercutlocations.png` + `integercutlocationszoom.png` |
+| 9 | `figure7_format.eps` | **composed** from `additionalSAFcost.png` + `unconstrained_SAF.png` |
+| 10 | `tornado.png` | `make_tornado.py` |
+| 11 | `graphic_toc.png` | hand-made table-of-contents graphic |
+| SI | `case1_10.png` … `case4_50.png` | **screen captures** of the `mill_airport_map.html` files that `run_create_maps.py` produces — 20 figures with no automated path |
 
-integer_cuts_case3: results files from run_integer_cuts for Case 3
+Figures 2–4 are the schematics. Figure 1, despite appearing early, is composed from
+notebook output. The `_v2`/`_v4`/`_v6`/`_format` suffixes all indicate editing
+outside the notebooks, so the manuscript figures cannot currently be regenerated
+end to end even though the underlying panels can.
 
-mill_specific_incentives: results files from run_mill_specific_incentives
+## Result folders
 
-unconstrained_SAF: results files from run_unconstrained_SAF_prem_sensitivity
+| folder | contents |
+|---|---|
+| `Case1` … `Case4` | `run_blend_and_opt_sensitivity.py` output, one subfolder per blend |
+| `integer_cuts_case1`, `integer_cuts_case3` | `run_integer_cuts.py` output, one subfolder per cut iteration |
+| `mill_specific_incentives` | one subfolder per SAF premium |
+| `unconstrained_SAF/Case5` | Case 5 base premium sweep |
+| `unconstrained_SAF/Case 5 {High,Low} {Sugar,Cost,Jet,Ethanol,Conv}` | the ten ±20% tornado scenarios |
+| `Results_Figures` | generated panels *and* PowerPoint-composed figures — see the table above |
+| `crc_job_scripts` | how the long runs were submitted (sanitised) |
 
-Results_Figures: all figures produced for the manuscript
+`unconstrained_SAF/Case5/production.csv` predates the `premium` column the script
+now writes; row *i* corresponds to premium *i* × 0.1 R$/L.
 
-### Other Files
-README: this file
+## Data files
 
-335MillsLatitudesLongitudes: excel file containing latitude and longitude data for all sugarcane mills in the supply chain
+| file | contents |
+|---|---|
+| `base_case_data_with_demands.xlsx` | all model input: distances, capacities, demands, prices, conversions, costs |
+| `335MillsLatitudesLongitudes.xlsx` | mill coordinates, plus `ethanol` and `annexed` mill-type sheets |
+| `AirportsLatitudeLongitude.xlsx` | airport coordinates |
+| `OilRefineriesLatLong.xlsx` | refinery coordinates |
+| `integer_cut_organized_data.xlsx` | integer-cut results consolidated for plotting. **Was assembled by hand**; `consolidate_integer_cuts.py` now derives it and `--verify` confirms the shipped copy is faithful. Its `Cut *` columns contain mojibake from a Latin-1/UTF-8 mix-up; the `SAF Mill` and `Percentage ` columns the notebook reads are correct. |
+| `gadm41_BRA_1.shp/.shx/.dbf` | GADM Brazilian state boundaries for the map figures. No `.prj`, so the code sets EPSG:4326 explicitly. |
 
-AirportsLatitudeLongitude: excel file containing latitude and longitude data for all airports in the supply chain
+## Reproduction and audit notes
 
-base_case_data_with_demands: excel file containing input data to the supply chain model including distances between infrastructure, capacity, demand, price, conversion, and cost data
-
-integer_cut_organized_data: excel file containing organized results data from integer_cuts_case1 and integer_cuts_case3 for easy plotting
-
-OilRefineriesLatLong: excel file containing latitude and longitude data for all refineries in the supply chain
-
-gadm41_BRA_1: database file from the GADM database containing geographic data from Brazil to create map figures in python
-
-gadm41_BRA_1: shape file from the GADM database containing geographic data from Brazil to create map figures in python
-
-gadm41_BRA_1: shape index file from the GADM database containing geographic data from Brazil to create map figures in python
+| document | contents |
+|---|---|
+| [REPRODUCE.md](REPRODUCE.md) | environment setup, how to run each study, portability notes |
+| [PROVENANCE.md](PROVENANCE.md) | software versions, model statistics, MIP gaps, solve times, hardware |
+| [RERUN_REPORT.md](RERUN_REPORT.md) | independent rerun of all 92 instances against the committed results |
+| [RECONCILIATION.md](RECONCILIATION.md) | what the private repository added, and what remains unexplained |
+| [MISSING_FILES.md](MISSING_FILES.md) | audit of every file, sheet and column the code references |
