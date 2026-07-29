@@ -14,7 +14,7 @@ Everything the audit's Section 10 lists as "promised but absent" is now present.
 | 2 | whatever computes Table 4's Mt·km columns | **confirmed missing**, and the table is internally inconsistent |
 | 3 | the tornado diagram | **closed** — data recovered, driver and plot written |
 | 4 | script for `integer_cut_organized_data.xlsx` | **closed** — written, and the shipped file verified faithful |
-| 5 | the mill-specific objective values | **open** — the committed columns are not solver output |
+| 5 | the mill-specific objective values | **closed** — the private copies carry the same round numbers, so this is not a migration artefact; no result depends on them |
 | 6 | the `payment` post-processing step | **closed** — derived in the script |
 | 7 | `ne_50m_admin_0_countries.shp` | **closed** — dependency removed |
 | 8 | the 20 SI maps and figure post-processing | **documented** as manual steps |
@@ -112,13 +112,23 @@ What was genuinely missing is now written:
   `key_results_mills.csv` / `_ref.csv`, so which mills are selected at each premium
   is recoverable without re-solving — the fix that stops this gap recurring.
 
-## 5. The mill-specific objective values — still open
+## 5. The mill-specific objective values — closed
 
 `mill_specific_incentives/*/key_results_mills.csv` has `objective` and `sc cost`
 equal to exactly 238.0e9, 237.0e9 … 232.0e9 — a perfect arithmetic sequence
-stepping by −1e9. Gurobi does not emit values like that; reruns land within 0.11%.
-No figure depends on them (`SensitivtyAnalysis.ipynb` cell 9 plots a hardcoded
-list). **Check whether the private copies contain real solver output.**
+stepping by −1e9, which Gurobi does not emit.
+
+**The private copies carry byte-identical round numbers**, checked 2026-07-29 across
+all seven premiums. So the rounding did not happen during migration and no code in
+either repository produces those values; the column was overwritten at some point
+in the private repo's own history.
+
+Consequence for replication: nothing. No published result depends on the column —
+`SensitivtyAnalysis.ipynb` cell 9 plots `total_incentive = [5.42, 5.41, ...]` from a
+hardcoded list with `sc_cost = []` left empty. Rerunning
+`run_mill_specific_incentives.py` produces genuine solver values (238,269,815,834.7
+for sp0_e0, within 0.11% of the placeholder). Treat the committed column as
+untrustworthy and regenerate if it is ever needed.
 
 ## Corrections to the earlier version of this file
 
