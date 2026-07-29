@@ -53,6 +53,12 @@ def create_model_map(results_folder1,results_folder2):
 
     brazil = brazil_states.dissolve(by='GID_0')
 
+    # The dissolved GADM outline carries ~406,000 vertices, against a few thousand in
+    # the Natural Earth 1:50m outline this replaced. Embedded as GeoJSON that inflated
+    # mill_airport_map.html from 1.3 MB to 157 MB. The outline is only drawn as a
+    # border and used for fit_bounds, so simplify to ~1 km (0.01 deg, ~7,500 vertices).
+    brazil = brazil.simplify(0.01, preserve_topology=True).to_frame("geometry")
+
     # Prepare the base map centered on Brazil
     map_center = [-15.788497, -47.879873]  # Center of Brazil
     m = folium.Map(location=map_center, zoom_start=5)
