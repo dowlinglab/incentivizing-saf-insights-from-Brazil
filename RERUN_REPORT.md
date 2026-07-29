@@ -64,6 +64,64 @@ selection frequencies from the committed `int_cuts*` folders reproduces the
 spreadsheet exactly for all 19 Case 1 mills and all 13 Case 3 mills. The
 hand-assembly was done correctly.
 
+## The site-set divergence is gap degeneracy — and it validates Key Finding 2
+
+This is the most useful thing the rerun produced, and it is a **positive result**,
+not a discrepancy. Read this before the "does not reproduce" section below.
+
+At a 50% blend, Case 1's committed design has 7 SAF mills and the rerun's has 11,
+sharing 5. Comparing against the paper's *own* integer-cut analysis:
+
+| mill | integer-cut frequency | committed | rerun |
+|---|---|---|---|
+| São João de Araras | 100% | yes | yes |
+| RAIZEN – Barra | 100% | yes | yes |
+| São Martinho | 100% | yes | yes |
+| BIOSEV – Unidade Santa Elisa | 100% | yes | yes |
+| BIOSEV – Unidade Ares | 90% | yes | yes |
+| Coruripe | 80% | yes | — |
+| Santa Cruz – SP | 50% | yes | — |
+| Monte Alegre | 30% | — | yes |
+| Marituba, Central Olho d'Água, Pindorama, Pinheiro | 20% | — | yes |
+| Ferrari / São Marino | 10% | — | yes |
+
+Three things follow.
+
+**Every differing mill is already in the paper's documented degenerate set,** and
+the five both runs agree on are exactly the highest-frequency ones — the four
+selected in 10/10 cut iterations plus the one selected in 9/10. The rerun landed
+inside the solution set the paper itself characterises, on a different platform and
+a different Gurobi version. Objectives differ by 0.00086%, well inside the 0.003%
+gap.
+
+**This independently confirms Key Finding 2.** The mills the paper identifies as
+essential are precisely the ones that survive a change of platform, solver version
+and search path. An independent run reaching the same core sites through a different
+route is stronger evidence than the integer-cut analysis alone, because the
+integer-cut solutions all come from one solver on one machine.
+
+**There is no model drift.** Blend-0 logistics are 0.0 M R$ in both runs, so this
+code is the published formulation, not the `Case*_v2` variant that costs the
+ethanol distribution leg (see [RECONCILIATION.md](RECONCILIATION.md)).
+
+### The caveat it exposes: Table 4's facility counts are not robust
+
+The same evidence that validates Key Finding 2 undercuts the facility *counts*.
+7 mills is one draw from a degenerate set; a different Gurobi version gives 11, and
+Case 2 goes from 7 refineries to 4. Both are certified optimal within the stated
+gap.
+
+So any manuscript statement about *how many* facilities a case selects — Table 4's
+first three columns and the `main_jcp.tex:602` narrative ("Case 1 … recommends seven
+ATJ facilities distributed across São Paulo (four) and the Northeast (three)") —
+should be presented as one representative optimum rather than *the* optimum, with a
+pointer to the integer-cut analysis. The derived Mt·km totals inherit the same
+sensitivity. Cases 3 and 4 happen to reproduce exactly, which is worth stating but
+should not be read as robustness: Case 3 differs at 10/20/30/40% blend.
+
+Recommended framing: report the essential mills (100%-frequency) as the robust
+finding, give facility counts as representative, and cite the integer-cut spread.
+
 ## What does not reproduce
 
 ### Investment locations, in Cases 1 and 2
@@ -86,12 +144,12 @@ committed run picks 7 refineries and the rerun picks 4, with the objectives
 differing by 1.4e-05. Recommend narrowing the claim to Case 4, or restating it as
 "the selected refineries vary but the total cost does not."
 
-### Table 2 facility counts, for Cases 1 and 2
+### Table 4 facility counts, for Cases 1 and 2
 
-The committed `SupplyChainMaps.ipynb` saved output prints exactly Table 2's
+The committed `SupplyChainMaps.ipynb` saved output prints exactly Table 4's
 facility columns, so those numbers are genuine notebook output:
 
-| Case | Table 2 (SAF mills / eth. suppliers / refineries) | committed notebook | rerun |
+| Case | Table 4 (SAF mills / eth. suppliers / refineries) | committed notebook | rerun |
 |---|---|---|---|
 | 1 | 7 / 27 / 6 | 7 / 27 / 6 | **11 / 26 / 6** |
 | 2 | 0 / 40 / 7 | 0 / 40 / 7 | **0 / 40 / 4** |
@@ -143,12 +201,23 @@ is not solver output. No figure depends on it: `SensitivtyAnalysis.ipynb` cell 9
 plots `total_incentive = [5.42, 5.41, ...]` from a hardcoded list and leaves
 `sc_cost = []` empty.
 
-### Table 2's Mt·km columns cannot be produced by the shipped code
+### Table 4's Mt·km columns cannot be produced by the shipped code
 
-Table 2 reports Stage 1 / Stage 2 / Total mass-distances of 455/316/771 Mt·km for
+> **Update, 2026-07-29.** The private repository has the same bug, so this is
+> confirmed rather than merely suspected. `supply_chain_distances.py` now implements
+> the correct `Σ(v·d)ρ` and reproduces **seven of the eight** published entries. The
+> eighth, Case 1 Stage 1, is explained: adding half the mill→mill leg gives 455.5
+> against the published 455, but the same convention gives Case 3 281.2 against its
+> published 237 — **Table 4 is internally inconsistent**, only Case 1 including that
+> term. Recommended fix: exclude mill→mill from Stage 1, report it as Stage 0, and
+> correct Case 1 to Stage 1 = 422, Total = 738. See
+> [RECONCILIATION.md](RECONCILIATION.md) §2.
+
+
+Table 4 reports Stage 1 / Stage 2 / Total mass-distances of 455/316/771 Mt·km for
 Case 1. `SupplyChainSummary.ipynb` prints something else entirely:
 
-| | Table 2 | committed notebook output | rerun |
+| | Table 4 | committed notebook output | rerun |
 |---|---|---|---|
 | Case 1 Stage 1 | 455 | 5,913 | 6,647 |
 | Case 1 Stage 2 | 316 | 22,529 | 23,370 |
@@ -156,14 +225,14 @@ Case 1. `SupplyChainSummary.ipynb` prints something else entirely:
 | Case 3 Stage 2 | 878 | 57,186 | 57,186 |
 
 This is not a unit conversion: the Case 1 ratio is ~37x while Case 3 is ~52x, and
-the Stage 1 : Stage 2 ordering is inverted (Table 2 has Stage 1 larger for Case 1,
-the notebook has Stage 2 much larger). Table 2's own columns are internally
+the Stage 1 : Stage 2 ordering is inverted (Table 4 has Stage 1 larger for Case 1,
+the notebook has Stage 2 much larger). Table 4's own columns are internally
 consistent (Stage 1 + Stage 2 = Total for all four cases), so the values are
 deliberate, not typos.
 
 **The discrepancy is visible in the authors' own committed notebook outputs, so it
 predates this rerun.** The shipped `SupplyChainSummary.ipynb` has never produced
-Table 2's transportation numbers, and how they were computed is not recorded
+Table 4's transportation numbers, and how they were computed is not recorded
 anywhere in the repository. This is a larger gap than the ones in
 [MISSING_FILES.md](MISSING_FILES.md), since the numbers appear in a table rather
 than a figure.
@@ -191,4 +260,20 @@ objective values. What does not carry across machines is the *identity and count
 of chosen facilities* in the two cases with degenerate designs (1 and 2), which
 the manuscript already anticipates for mills but explicitly rules out for
 refineries. Separately, two committed artifacts — the mill-specific objectives and
-Table 2's Mt·km columns — cannot be traced to the shipped code at all.
+Table 4's Mt·km columns — cannot be traced to the shipped code at all.
+
+---
+
+## Status after the private-repo reconciliation (2026-07-29)
+
+| finding above | now |
+|---|---|
+| model size disagrees with the manuscript | **resolved** — the migrated model reproduces the CRC solver logs exactly (147,507 / 3,319 / 6,727 / 8,870); the manuscript's four numbers match no code in either repo |
+| Table 4's Mt·km untraceable | **confirmed**, and Table 4 shown internally inconsistent; corrected calculation now in `supply_chain_distances.py` |
+| tornado diagram has no code | **resolved** — data recovered, driver and plot written |
+| `integer_cut_organized_data.xlsx` hand-built | **resolved** — `consolidate_integer_cuts.py`, and the shipped file verified faithful |
+| mill-specific objectives are round numbers | **still open** |
+| site sets differ for Cases 1 and 2 | **reframed as a validation** — see the degeneracy section above |
+
+See [RECONCILIATION.md](RECONCILIATION.md) for the full status and
+[PROVENANCE.md](PROVENANCE.md) for versions, gaps and solve times.

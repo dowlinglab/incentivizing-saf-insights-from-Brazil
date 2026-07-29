@@ -1,173 +1,186 @@
 # Reconciling the private repo against this public repo
 
-Selected files were manually migrated from a private repository into this public
-one. The reproduction work documented in [RERUN_REPORT.md](RERUN_REPORT.md) and
-[MISSING_FILES.md](MISSING_FILES.md) turned up several results that the public
-code demonstrably cannot produce, which means the migration was incomplete. This
-file is the working checklist for that comparison.
+Selected files were manually migrated from a private repository
+(`C2C_Project`, branch `Maddie_branch`) into this public one. The reproduction work
+in [RERUN_REPORT.md](RERUN_REPORT.md) found published results the public code could
+not produce; this file tracks what the private repo explained and what it did not.
 
-## Evidence that the migrated code is not the code that produced the manuscript
+**Status: two of three blockers closed, one confirmed and worse than first thought.**
+Everything the audit's Section 10 lists as "promised but absent" is now present.
 
-Five independent signals, strongest first:
+| # | item | status |
+|---|---|---|
+| 1 | model version behind the reported instance sizes | **closed** — the migrated model is correct; the manuscript is wrong |
+| 2 | whatever computes Table 4's Mt·km columns | **confirmed missing**, and the table is internally inconsistent |
+| 3 | the tornado diagram | **closed** — data recovered, driver and plot written |
+| 4 | script for `integer_cut_organized_data.xlsx` | **closed** — written, and the shipped file verified faithful |
+| 5 | the mill-specific objective values | **open** — the committed columns are not solver output |
+| 6 | the `payment` post-processing step | **closed** — derived in the script |
+| 7 | `ne_50m_admin_0_countries.shp` | **closed** — dependency removed |
+| 8 | the 20 SI maps and figure post-processing | **documented** as manual steps |
 
-1. **The model is a different size than the manuscript reports.** The manuscript
-   states three times (`main_jcp.tex` lines 485, 498, 512) that each MILP instance
-   has 124,711 continuous variables, 3,784 binary variables, 5,949 equality and
-   9,246 inequality constraints. Building Case 1 from `create_sc_model_full.py`
-   with the exact arguments the run scripts pass gives **149,102 / 3,357 / 6,727 /
-   8,870**. Not explained by variable fixing or by `breakpoints`. The private repo
-   almost certainly holds the model version these counts came from.
+---
 
-2. **A model module referenced by the run scripts does not exist here.** Three run
-   scripts opened with a commented-out import of a module that was never migrated
-   (visible at commit `589440a`, before the refactor):
+## 1. Model size — closed. The migrated model is right; the manuscript is wrong.
 
-   ```
-   run_blend_and_opt_sensitivity.py:1        # from create_sc_model_with_demand import *
-   run_mill_specific_incentives.py:1         # from create_sc_model_with_demand import *
-   run_unconstrained_SAF_prem_sensitivity.py:1  # from create_sc_model_with_demand import *
-   ```
+The manuscript reports 124,711 continuous / 3,784 binary / 5,949 equality / 9,246
+inequality in three places (`main_jcp.tex` lines 485, 498, 512). **No module in
+either repository produces those numbers**, and the search for a module that does
+is over: declared binaries are `entity_count × (breakpoints − 1)`, and none of the
+five candidates lands on 3,784.
 
-   **Search the private repo for `create_sc_model_with_demand.py` first** and check
-   its variable counts against item 1.
+| module | continuous | binary |
+|---|---|---|
+| `Supply_Chain_Model/create_sc_model.py` | 132,325 | 3,015 |
+| `Supply_Chain_Model/create_sc_model_full.py` | 152,117 | 3,357 |
+| `Supply_Chain_Model/create_sc_model_with_demand.py` | 142,943 | 3,276 |
+| `…_with_demand_no_airports.py` | 132,329 | 3,015 |
+| public / paper-folder `create_sc_model_full.py` | 149,102 | 3,357 |
+| **manuscript** | **124,711** | **3,784** |
 
-3. **Committed CSVs contain columns no script writes.** The migrated results are
-   downstream of code that is not here:
+The ten CRC solver logs (`run_sc_model.o*`) are authoritative, and **the migrated
+model reproduces them exactly** — see `model_statistics.py`:
 
-   | file | column present | written by public code? |
-   |---|---|---|
-   | `mill_specific_incentives/*/key_results_mills.csv` | `payment` | no (now derived — see below) |
-   | `Case1-4/*/key_results_mills.csv` | `incentives` | yes, but absent from the committed files |
-   | `unconstrained_SAF/Case5/production.csv` | `premium` | yes, but absent from the committed file |
+| quantity | this code | CRC log | manuscript |
+|---|---|---|---|
+| continuous | **147,507** | 147,507 | 124,711 |
+| binary | **3,319** | 3,319 | 3,784 |
+| equality | **6,727** | (no split) | 5,949 |
+| inequality | **8,870** | (no split) | 9,246 |
+| rows | **15,597** | 15,597 | 15,195 |
 
-   The last two are the reverse direction: the committed data predates columns the
-   current scripts write, so the migrated *results* and migrated *code* are from
-   different points in the private repo's history.
+The log gives no equality/inequality split, but the split measured here sums
+exactly to its 15,597 rows, so all four numbers now have a source. Three counts
+legitimately differ — 149,102 declared, 148,767 after fixing `m.z`/`m.y_ref`/`m.s`,
+147,507 as the LP writer emits — and the 1,260 gap between the last two is fully
+accounted for: `v` 464, `x` 335, `vol_eth_sold`'s diagonal 335, `x_ref` 126.
 
-4. **Two published numbers are untraceable to any shipped code.** Table 2's
-   Mt·km columns and the mill-specific objective values (see checklist items 2 and
-   5 below).
+**Action:** replace the manuscript's four numbers with 147,507 / 3,319 / 6,727 /
+8,870, stating they are as-solved. Cases 2 and 4 fix `m.y` instead of `m.y_ref` and
+carry 2,993 binaries, so the "every instance" phrasing needs care.
 
-5. **The model contains commented-out earlier formulations.** In
-   `create_sc_model_full.py`, the active `sc_cost_expression` includes
-   `+ sum(m.s[i] for i in m.MILLS)` (incentive payments) while the commented-out
-   predecessor objective does not, and a commented `pos_profs` uses
-   `reference_profit1b` where the active one uses `0`. The private repo likely has
-   these as distinct files or commits rather than comments.
+One arithmetic note, in case anyone revisits this: 3,784 = 344 × 11 exactly, where
+344 = 335 mills + 9 refineries and 11 = breakpoints − 1 at 12 breakpoints. That is
+the only decomposition that fits, and no module builds that entity set — but it
+would be where to look if the number ever needs attributing rather than replacing.
 
-## Reconciliation checklist
+## 2. Table 4's Mt·km columns — confirmed missing, and the table is inconsistent
 
-Ordered by how much of the manuscript depends on it.
+The `(Σd)(Σv)ρ` bug is present in **both** repositories, unchanged, so Table 4 was
+not produced by either notebook and how it *was* produced remains unknown.
 
-### 1. The model version behind the reported instance sizes — **blocking**
+`supply_chain_distances.py` implements the correct `Σ(v·d)ρ` and reproduces **seven
+of the eight** published entries, treating Stage 1 as the mill→refinery leg only:
 
-*Symptom:* counts in item 1 above.
-*Look for:* `create_sc_model_with_demand.py`, or any `create_sc_model*.py` variant.
-*Verify:* build Case 1 with `max_saf_capacity=700000, breakpoints=10,
-grass_roots_factor=0.5, ref_blend=True, profit_obj=False` and count active Vars
-and Constraints. Target 124,711 / 3,784 / 5,949 / 9,246. A script that does the
-counting is archived alongside the reproduction results.
-*Why it matters:* if the private model differs structurally, every reproduced
-number in `RERUN_REPORT.md` was computed against a different formulation than the
-manuscript describes, and the objective agreement found there is coincidental
-rather than confirmatory.
+| | Stage 1 | published | Stage 2 | published |
+|---|---|---|---|---|
+| Case 1 | 421.8 | 455 | 316.3 | 316 |
+| Case 2 | 608.3 | 608 | 446.2 | 446 |
+| Case 3 | 237.0 | 237 | 877.8 | 878 |
+| Case 4 | 652.6 | 653 | 1282.1 | 1282 |
 
-### 2. Whatever computes Table 2's Mt·km columns — **blocking**
+The eighth is now explained rather than guessed. Adding half the mill→mill ethanol
+leg (33.7 Mt·km) to Case 1 gives 455.5, matching its published 455 — but the same
+convention applied to Case 3 gives 281.2 against its published 237. Cases 2 and 4
+have no mill→mill flow and cannot distinguish the two.
 
-*Symptom:* Table 2 reports Stage 1 / Stage 2 / Total of 455/316/771 Mt·km for
-Case 1. `SupplyChainSummary.ipynb` prints 5,913 / 22,529 — verifiable from the
-notebook's own committed output, so this predates any rerun. Not a unit
-conversion: Case 1 is off by ~37×, Case 3 by ~52×, and the Stage 1 : Stage 2
-ordering is inverted. Table 2's columns are internally consistent
-(Stage 1 + Stage 2 = Total for all four cases), so the values are deliberate.
-*Look for:* a different version of `SupplyChainSummary.ipynb`, or a separate
-distance/mass-distance script or spreadsheet.
-*Verify:* it should reproduce 455/316/771, 608/446/1,054, 237/878/1,115 and
-653/1,282/1,935 from the committed Case 1–4 results at 50% blend.
-*Why it matters:* a published table with no derivable provenance.
+**Table 4 is internally inconsistent: only Case 1's Stage 1 includes the half
+mill→mill term.**
 
-### 3. The tornado diagram — **blocking**
+**Action:** adopt "Stage 1 excludes mill→mill", report mill→mill separately as
+Stage 0, and correct Case 1 to Stage 1 = 422, Total = 738.
 
-*Symptom:* `images/tornado.png` and the ±20% sensitivity narrative at
-`main_jcp.tex:641` have no counterpart in the public code at all;
-`grep -ril tornado` returns nothing.
-*Look for:* a script that perturbs sugar / ethanol / jet fuel prices and ATJ
-production cost and conversion by ±20% and re-runs the Case 5 premium sweep for
-each, plus its results folder and plotting cell.
-*Verify:* it should reproduce the tornado ordering and the baseline recommended
-premium of 2.6 R$/L, which the rerun confirms.
-*Cost note:* this is the most compute-heavy gap — roughly ten Case 5 sweeps. Case 5
-took 1 h 51 min sequentially on an M1 Max, so budget accordingly.
+## 3. The tornado diagram — closed
 
-### 4. The script that builds `integer_cut_organized_data.xlsx`
+The ten scenario runs exist privately in
+`unconstrained_SAF/Case 5 {High,Low} {Conv,Cost,Ethanol,Jet,Sugar}/` and are now
+copied here. All ten published thresholds reproduce from them: sugar 2.6/2.6,
+ATJ OPEX 2.4/2.8, jet 3.4/1.8, ethanol 1.5/3.7, conversion 4.0/1.7, against a base
+of 2.6 R$/L. `images/tornado.png` is byte-identical to the private
+`Results_Figures/tornado.png`.
 
-*Symptom:* the spreadsheet is shipped and cited in the SI, and
-`integercutanalysis.ipynb` depends on it, but nothing builds it from the raw
-`integer_cuts_case{1,3}/50/int_cuts{0..9}/` folders.
-*Good news:* the spreadsheet is **verified faithful** — recomputing selection
-frequencies from the committed raw folders reproduces its `SAF Mill` /
-`Percentage ` columns exactly for all 19 Case 1 and 13 Case 3 mills. So this is a
-missing convenience script, not a data-integrity problem.
-*Look for:* the aggregation script or notebook cell.
+What was genuinely missing is now written:
 
-### 5. Whatever produced the mill-specific objective values
+- `run_tornado_sensitivity.py` applies the ±20% perturbation programmatically
+  (it was done by hand between runs). The parameter mapping was undocumented; it
+  was derived and then verified against all ten thresholds:
+  `prices.sug.price`, `prices.et.price`, `prices.saf.price`, `prices.saf.cost`
+  ("ATJ OPEX"), `conversions.et_to_saf` ("ATJ Conversion").
+- `make_tornado.py` reads the thresholds from the CSVs instead of the hand-typed
+  DataFrame the private notebook used.
+- `run_unconstrained_SAF_prem_sensitivity.py` now saves per-premium
+  `key_results_mills.csv` / `_ref.csv`, so which mills are selected at each premium
+  is recoverable without re-solving — the fix that stops this gap recurring.
 
-*Symptom:* `mill_specific_incentives/*/key_results_mills.csv` has `objective` and
-`sc cost` equal to exactly 238.0e9, 237.0e9, … 232.0e9 — a perfect arithmetic
-sequence stepping by −1e9. Gurobi does not emit values like that. Reruns land
-within 0.11% of them.
-*Look for:* whether the private repo's copies contain real solver output, or
-whether a spreadsheet or manual edit produced the round numbers.
-*Mitigation already in place:* no figure depends on these columns —
-`SensitivtyAnalysis.ipynb` cell 9 plots `total_incentive = [5.42, 5.41, ...]` from
-a hardcoded list with `sc_cost = []` left empty. Check whether the private version
-computes that list from data.
+## 5. The mill-specific objective values — still open
 
-### 6. The `payment` post-processing step
+`mill_specific_incentives/*/key_results_mills.csv` has `objective` and `sc cost`
+equal to exactly 238.0e9, 237.0e9 … 232.0e9 — a perfect arithmetic sequence
+stepping by −1e9. Gurobi does not emit values like that; reruns land within 0.11%.
+No figure depends on them (`SensitivtyAnalysis.ipynb` cell 9 plots a hardcoded
+list). **Check whether the private copies contain real solver output.**
 
-*Symptom:* `SensitivtyAnalysis.ipynb` reads a `payment` column that no migrated
-script wrote.
-*Resolved here:* derived in `run_mill_specific_incentives.py` as
-`s[u] / (SAF_u * 1000)` (R$/L), guarded at `SAF_u = 0`, reproducing the committed
-column's 2.50–2.61 R$/L range.
-*Verify:* confirm the private repo uses the same formula rather than a different
-normalisation.
+## Corrections to the earlier version of this file
 
-### 7. `ne_50m_admin_0_countries.shp`
+- **The column-provenance evidence largely dissolves.** `payment` *is* now written
+  by `run_mill_specific_incentives.py`. Both repos' `mill_specific_incentives` CSVs
+  contain `incentives` and `payment`. The Cases 1–4 CSVs legitimately have neither,
+  because those runs fix `m.s = 0`. The only real instance is `premium` missing from
+  the committed base `Case5/production.csv` while the ten tornado scenarios have
+  it — the base run simply predates them. This is no longer evidence that results
+  and code come from different points in history.
+- **No parameter drift exists.** `base_case_data_with_demands.xlsx` is
+  byte-identical between the repos.
+- **Table numbering:** it is Table 4, not Table 2 (the 4th `table` environment in
+  `main_jcp.tex`). Corrected throughout.
 
-*Symptom:* `create_maps.py` read this Natural Earth 1:50m shapefile, which is not
-in the public repo, so `run_create_maps.py` could never run.
-*Resolved here:* the Brazil outline is now dissolved from `gadm41_BRA_1.shp`,
-which does ship. No action needed unless the private version differs
-cartographically.
+## The `_v2` trap — worse than a result-folder problem
 
-### 8. The 20 SI supply chain maps and the figure post-processing
+The private repo carries `Case1_v2`–`Case4_v2`, a **different model variant**: they
+cost the ethanol *distribution* leg, adding 3.74 B R$/yr at 0% blend where the
+published model has exactly zero, and Case 1 selects 15 mills at entirely different
+sites, none of them the three essential ones. The published results are non-`_v2`.
 
-*Symptom:* `images/case1_10.png` … `case4_50.png` are screen captures of the
-folium HTML with no automated path. Separately, the manuscript uses
-`emissions_v6.png`, `inputmaps_v4.png`, `fourpanelcostsummary_v2.png`,
-`incentivestudy.png` and `figure{5,6,7}_format.eps`, which are composited or
-relabelled versions of the notebook outputs.
-*Look for:* any scripted figure assembly, or confirm these are manual steps and
-document them as such.
+**The hazard is not limited to result folders and two notebooks.
+`Supply_Chain_Model/create_sc_model_full.py` is itself the `_v2` model.** It adds
 
-## Claims to re-check once the private code is in hand
+- `vol_eth_sold_ref_market` (335 × 9 = 3,015 continuous — exactly the
+  152,117 − 149,102 delta in the table above),
+- an `eth_distribution_sum` expression and a 335-row `eth_sold_distribution`
+  constraint,
+- and folds that variable into the mill→refinery logistic cost.
 
-Two manuscript statements that the rerun contradicts. Both may resolve differently
-against the private model, so re-test rather than edit yet:
+21 substantive diff lines against the public copy. The **paper-folder** copy
+(`C2C_Project/Incentivizing_SAF_Insights_from_Brazil/create_sc_model_full.py`) has
+none of it and matches the public one. So "the two repos agree on the model" holds
+only for the paper-folder copy — and anyone restoring "the original model" would
+naturally reach for the folder called `Supply_Chain_Model`, silently switching
+models.
 
-- **`main_jcp.tex:606`**: "For investments at refineries (Cases 2 and 4), there is
+Do not sync `Supply_Chain_Model/create_sc_model_full.py`, the private
+`SupplyChainMaps.ipynb`, or the private `run_create_maps.py` over the public
+copies. Verified 2026-07-29: the public `create_maps.py`, `run_create_maps.py` and
+all four notebooks reference non-`_v2` folders.
+
+## Claims to re-check in the manuscript
+
+- **`main_jcp.tex:606`** — "For investments at refineries (Cases 2 and 4), there is
   no expected variation in the selected refinery within the 0.003% MIP gap." Holds
-  for Case 4 (6/6 blends identical) but fails for Case 2 (differs at 20/30/40/50%;
-  7 refineries → 4 at 50% blend, objectives within 1.4e-05).
-- **Figure `fig:SAF locations` caption**: three mills "chosen in 100% of optimal
-  solutions regardless of the decision-making perspective." Raízen Barra and São
-  João de Araras hold at 100% in both cases on an independent integer-cut run; São
-  Martinho drops to 90% (Case 1) and 80% (Case 3).
-
-Also gap-sensitive, and quoted in the text: the facility counts at
-`main_jcp.tex:602` and in Table 2 for Cases 1 and 2 (7→11 mills, 7→4 refineries).
-Cases 3 and 4 reproduce exactly.
+  for Case 4 (6/6 blends identical); fails for Case 2 (differs at 20/30/40/50%;
+  7 refineries → 4 at 50%, objectives within 1.4e-05). Narrow to Case 4.
+- **Figure `fig:SAF locations` caption** — of the three mills said to be "chosen in
+  100% of optimal solutions", Raízen Barra and São João de Araras hold at 100% in
+  both cases on an independent integer-cut run; São Martinho is 90% (Case 1) and
+  80% (Case 3).
+- **Table 4 facility counts and `main_jcp.tex:602`** — gap-sensitive for Cases 1 and
+  2 (7→11 mills, 7→4 refineries). Cases 3 and 4 reproduce exactly. See the
+  degeneracy section of [RERUN_REPORT.md](RERUN_REPORT.md), which frames this as a
+  validation of Key Finding 2 plus a robustness caveat.
+- **Solve time** — "approximately 20 minutes" per instance is wrong in both
+  directions: median 1.4–110 s, worst single solve 7.69 h. See
+  [PROVENANCE.md](PROVENANCE.md).
+- **Gurobi version** — the paper says 10.0.3, the job script loads 11.0.2, the logs
+  report 12.0.2.
 
 ## The archived reproduction results
 
@@ -181,22 +194,16 @@ published artifact:
   figures/            all 13 regenerated figures
   notebooks/          the four notebooks as executed, outputs inline
   provenance/         RUN_INFO.txt, conda-list.txt, environment-frozen.yml
-  logs/               the driver scripts verbatim, their stdout, and comparison.txt
+  logs/               the driver scripts verbatim, their stdout, comparison.txt
   tools/              count_model_size.py, compare_to_committed.py, merge_case5.py
   MANIFEST.sha256     669 files, all verifying
 ```
 
-`tools/count_model_size.py` is what settles checklist item 1 — point it at a
-recovered model and it prints MATCH or the delta against each of the manuscript's
-four counts. `tools/compare_to_committed.py` compares any two result trees, so it
-works for private-vs-public as well as rerun-vs-committed.
-
 **The archive is a stable baseline, not a single sample.** It is the second full
 rerun; an earlier one on 2026-07-27 used a different concurrency layout and
 produced identical results, including the same site-set changes and integer-cut
-frequencies. The divergence from the committed results is therefore reproducible
-rather than thread jitter, so a private-repo run that lands on the committed values
-would isolate the cause.
+frequencies. The divergence from the committed results is reproducible rather than
+thread jitter.
 
 That earlier run's raw artifacts were staged in `/private/tmp`, which macOS cleared
 before they could be archived; its findings survived only because they were
