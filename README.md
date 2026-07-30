@@ -90,10 +90,42 @@ investment sites is not unique for Cases 1 and 2 — see
 | `SensitivtyAnalysis.ipynb` | `additionalSAFcost.png`, `unconstrained_SAF.png`, `millspecficincentivestudy.png` |
 | `integercutanalysis.ipynb` | `integercutlocations.png`, `integercutlocationszoom.png` |
 
-**Caveat.** `SupplyChainSummary.ipynb` cell 10 computes mass-distance as
-(Σ distances)(Σ volumes)ρ instead of Σ(volume × distance)ρ, and reproduces none of
-Table 4's entries. Use `supply_chain_distances.py` instead, which reproduces seven
-of the eight; see its docstring for why the eighth (Case 1 Stage 1) differs.
+`SupplyChainSummary.ipynb` cell 10 reports the Table 4 mass-distances by calling
+`supply_chain_distances.py`, so the notebook and the script cannot drift apart. It
+previously computed (Σ distances)(Σ volumes)ρ instead of Σ(volume × distance)ρ and
+reproduced none of Table 4's entries — Case 1 Stage 1 came out as 5,913 Mt·km
+against the 455 published.
+
+## Published artefacts that must not be overwritten
+
+Two committed figures are **byte-identical** to the manuscript's images, and that
+identity is what establishes their provenance:
+
+| file | identical to |
+|---|---|
+| `Results_Figures/tornado.png` | `images/tornado.png` (Figure 10) |
+| `Results_Figures/ninepanelproductsummary_pos_v2.png` | `images/ninepanelproductsummary_pos_v2.png` (Figure 5) |
+
+The 22 committed `mill_airport_map.html` files are published artefacts too — the 20
+SI maps (`case1_10` … `case4_50`) are screen captures of them.
+
+Regenerated output is numerically correct but not byte-identical, so the scripts
+default to distinct names and `.gitignore` covers them:
+
+- `make_tornado.py` writes `Results_Figures/tornado_regenerated.png`
+- `run_create_maps.py` writes `mill_airport_map_regenerated.html` (`--output` to change)
+
+**Executing the notebooks does overwrite `Results_Figures/`**, including
+`ninepanelproductsummary_pos_v2.png`. The notebooks take no arguments, so there is
+no default to redirect. To re-execute safely, run them in a scratch directory with
+the input data and `Case1`–`Case4` symlinked in, and copy back only the `.ipynb`:
+
+```bash
+W=/tmp/nbrun; mkdir -p $W/Results_Figures && cd $W
+for f in *.xlsx gadm41_BRA_1.* supply_chain_distances.py; do ln -s "$OLDPWD/$f" .; done
+for d in Case1 Case2 Case3 Case4 unconstrained_SAF mill_specific_incentives; do ln -s "$OLDPWD/$d" .; done
+cp "$OLDPWD/SupplyChainSummary.ipynb" . && jupyter nbconvert --to notebook --execute --inplace SupplyChainSummary.ipynb
+```
 
 ## Figure provenance
 

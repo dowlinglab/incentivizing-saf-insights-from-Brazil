@@ -6,7 +6,7 @@ import os
 import geopandas as gpd
 from shapely.geometry import Point
 
-def create_model_map(results_folder1,results_folder2):
+def create_model_map(results_folder1,results_folder2,output_name='mill_airport_map_regenerated.html'):
 
     this_file_path = os.path.dirname(os.path.realpath(__file__))
 
@@ -326,5 +326,8 @@ def create_model_map(results_folder1,results_folder2):
     m.get_root().html.add_child(folium.Element(legend_html))
 
     # Save the map to an HTML file
-    m.save(os.path.join(results_dir, 'mill_airport_map.html'))
+    #Defaults to a _regenerated name: the committed mill_airport_map.html files are
+    #the published artefacts (22 of them are tracked), and the SI's case*_*.png maps
+    #are screen captures of them. Pass output_name to overwrite deliberately.
+    m.save(os.path.join(results_dir, output_name))
 

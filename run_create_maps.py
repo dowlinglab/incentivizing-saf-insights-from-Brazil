@@ -20,6 +20,8 @@ parser.add_argument("--blend", type=float, default=None,
                          "--blend-folder interest_mid_blend_<pct>")
 parser.add_argument("--case-folder", default=None,
                     help="results folder the solution comes from (default: Case1)")
+parser.add_argument("--output", default="mill_airport_map_regenerated.html",
+                    help="output filename inside the results folder (default: \r\n                         mill_airport_map_regenerated.html; the committed\r\n                         mill_airport_map.html files are the published artefacts)")
 parser.add_argument("--blend-folder", default=None,
                     help="blend subfolder the solution comes from "
                          "(default: interest_mid_blend_50)")
@@ -36,4 +38,4 @@ if blend_folder is None:
     else:
         blend_folder = "interest_mid_blend_50"
 
-create_model_map(case_folder, blend_folder)
+create_model_map(case_folder, blend_folder, args.output)
