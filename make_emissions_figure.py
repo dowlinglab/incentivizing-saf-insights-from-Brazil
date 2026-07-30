@@ -2,7 +2,7 @@
 
 Reproduces the manuscript's Figure 6 in full, including the two annotations that
 were previously added by hand and so lived nowhere in the repository: the dashed
-conversion upper bound at 0.65 (derived in SI Section S6.1) and the labels on the
+conversion upper bound at 0.65 (derived in SI Section S5.1) and the labels on the
 five literature points.
 
 The literature points are labelled A-E rather than by reference number. The
@@ -47,7 +47,7 @@ NOMINAL_EMISSIONS = 45
 NOMINAL_CONVERSION = 0.42
 
 #Theoretical maximum ethanol-to-SAF conversion from the carbon balance in
-#SI Section S6.1
+#SI Section S5.1 (\label{sec: best SAF conv}; confirmed against SI_jcp.aux)
 CONVERSION_UPPER_BOUND = 0.65
 
 #Literature points, in SI Table S2 row order, which fixes the A-E labelling.
