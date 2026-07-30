@@ -114,6 +114,7 @@ default to distinct names and `.gitignore` covers them:
 
 - `make_tornado.py` writes `Results_Figures/tornado_regenerated.png`
 - `run_create_maps.py` writes `mill_airport_map_regenerated.html` (`--output` to change)
+- `make_emissions_figure.py` writes `Results_Figures/emissions_labelled_regenerated.png` (`--output` to change)
 
 **Executing the notebooks does overwrite `Results_Figures/`**, including
 `ninepanelproductsummary_pos_v2.png`. The notebooks take no arguments, so there is
@@ -129,28 +130,47 @@ cp "$OLDPWD/SupplyChainSummary.ipynb" . && jupyter nbconvert --to notebook --exe
 
 ## Figure provenance
 
-Not every manuscript figure comes from a notebook. Several are composed in
-PowerPoint from generated panels, and some are hand-drawn.
+Every manuscript figure, and whether this repository can regenerate it end to end.
+Several are composed in PowerPoint from generated panels, some are hand-drawn, and
+the 20 SI maps are browser screen captures.
 
-| Fig. | manuscript file | source |
-|---|---|---|
-| 1 | `inputmaps_v4.png` | **composed** from `fourpanelinputdata.png` + `fourpanelinputdata_legend.png` |
-| 2 | `problemstatement.png` | **hand-drawn schematic**, no generating script |
-| 3 | `mill_pfd.png` | **hand-drawn schematic**, no generating script |
-| 4 | `ref_pfd.png` | **hand-drawn schematic**, no generating script |
-| 5 | `ninepanelproductsummary_pos_v2.eps` | `SupplyChainSummary.ipynb`, converted to EPS |
-| 6 | `emissions_v6.png` | `emissions_sensitivity.png`, relabelled |
-| 7 | `figure5_format.eps` | **composed** from `optimalsclocationszoom.png` + `optimaldesign_legend.png` |
-| 8 | `figure6_format.eps` | **composed** from `integercutlocations.png` + `integercutlocationszoom.png` |
-| 9 | `figure7_format.eps` | **composed** from `additionalSAFcost.png` + `unconstrained_SAF.png` |
-| 10 | `tornado.png` | `make_tornado.py` |
-| 11 | `graphic_toc.png` | hand-made table-of-contents graphic |
-| SI | `case1_10.png` … `case4_50.png` | **screen captures** of the `mill_airport_map.html` files that `run_create_maps.py` produces — 20 figures with no automated path |
+| Fig. | manuscript file | source | end to end? |
+|---|---|---|---|
+| 1 | `inputmaps_v4.png` | **composed** from `fourpanelinputdata.png` + `fourpanelinputdata_legend.png` (`SupplyChainMaps.ipynb`) | no — manual composition |
+| 2 | `problemstatement.png` | **hand-drawn schematic**, no generating script | no — by design |
+| 3 | `mill_pfd.png` | **hand-drawn schematic**, no generating script | no — by design |
+| 4 | `ref_pfd.png` | **hand-drawn schematic**, no generating script | no — by design |
+| 5 | `ninepanelproductsummary_pos_v2.eps` | `SupplyChainSummary.ipynb`; the `.png` is byte-identical to the manuscript's, the `.eps` is converted outside the notebook | panels yes, EPS conversion manual |
+| 6 | `emissions_v7.png` | `make_emissions_figure.py` | **yes** |
+| 7 | `figure5_format.eps` | **composed** from `optimaldesignmap50.png` + `optimalsclocationszoom.png` + `optimaldesign_legend.png` (`SupplyChainMaps.ipynb`) | no — manual composition |
+| 8 | `figure6_format.eps` | **composed** from `integercutlocations.png` + `integercutlocationszoom.png` (`integercutanalysis.ipynb`), plus the three red arrows | no — manual composition |
+| 9 | `figure7_format.eps` | **composed** from `additionalSAFcost.png` + `unconstrained_SAF.png` (`SensitivtyAnalysis.ipynb`) | no — manual composition |
+| 10 | `tornado.png` | `make_tornado.py`, which reads the ten `unconstrained_SAF/` CSVs | **yes** |
+| TOC | `graphic_toc.png` | hand-made table-of-contents graphic | no — by design |
+| S1–S20 | `case1_10.png` … `case4_50.png` | **screen captures** of the `mill_airport_map.html` files `run_create_maps.py` produces. The data is reproducible — the folium legend counts match Table 4 — but the pan, zoom, crop and legend state are manual | no — manual capture |
+| S21 | `fourpanelcostsummary_v2.png` | `SupplyChainSummary.ipynb` | **yes** |
+| S22 | `incentivestudy.png` | `SensitivtyAnalysis.ipynb`, which writes it as `millspecficincentivestudy.png` — same figure, renamed on the way into the manuscript | **yes**, modulo the rename |
 
-Figures 2–4 are the schematics. Figure 1, despite appearing early, is composed from
-notebook output. The `_v2`/`_v4`/`_v6`/`_format` suffixes all indicate editing
-outside the notebooks, so the manuscript figures cannot currently be regenerated
-end to end even though the underlying panels can.
+### Notes on Figure 6
+
+Figure 6 used to be the worst case: `emissions_v6.png` was the notebook's contour
+plot with two hand-added annotations — the dashed conversion upper bound at 0.65
+and labels on the five literature points — and the labels were **reference
+numbers**. Those numbers came from the old alphabetical bibliography style and
+became silently wrong when the manuscript moved to citation-order numbering:
+`[59] [12] [51] [50] [33]` should have read `[7] [63] [64] [65] [66]`.
+
+`make_emissions_figure.py` now produces the whole figure, and the points are
+labelled **A–E** instead, with the reference mapping in the manuscript caption and
+in SI Table S2. That keeps the image independent of the bibliography. **Do not
+reintroduce reference numbers into any figure.**
+
+### Suffix conventions
+
+A `_v2`/`_v4`/`_v6`/`_format` suffix on a manuscript filename indicates editing
+outside the notebooks. Figures 6 and 10 and SI Figures S21–S22 can now be
+regenerated end to end; the rest still need a manual step, which is a composition
+or capture task rather than a code gap.
 
 ## Result folders
 
