@@ -41,7 +41,7 @@ JET_FUEL_CO2 = 90             #gCO2/MJ for conventional jet fuel
 
 #Nominal ATJ point. The published figure plots the star at conversion 0.42 while
 #the caption and SI Table S2 both say 0.41; that discrepancy is an open item in
-#claude_audit.tex, so the published value is kept here rather than silently
+#claude_audit2.tex, so the published value is kept here rather than silently
 #resolved. Change with --nominal-conv once the authors decide.
 NOMINAL_EMISSIONS = 45
 NOMINAL_CONVERSION = 0.42
