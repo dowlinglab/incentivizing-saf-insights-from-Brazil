@@ -17,7 +17,12 @@ Letters follow the row order of SI Table S2, so A-E read down that table.
 
 Examples:
     python make_emissions_figure.py
-    python make_emissions_figure.py --output Results_Figures/emissions_v8.png
+    python make_emissions_figure.py --output Results_Figures/emissions_v9.png
+
+Emission factors are the cited ones: sugarcane ethanol 21.3 gCO2/MJ (Seabra et al.)
+and conventional jet fuel 89 gCO2/MJ (CORSIA). The published figure was drawn with
+23.1 and 90 -- the code had rounded 90 and transposed 21.3 -- which put the nominal
+net at 2.40 Mt CO2/yr instead of 2.67.
 """
 
 import argparse
@@ -36,8 +41,8 @@ this_file_path = os.path.dirname(os.path.realpath(__file__))
 SAF_50_PCT = 2_140_000        #m3 SAF for a 50% blend
 ETHANOL_MJ_PER_M3 = 21_200    #energy density of ethanol
 JET_MJ_PER_M3 = 35_300        #energy density of jet fuel and SAF
-GASOLINE_MINUS_ETHANOL = 52.4 #gCO2/MJ; 75.5 gasoline less 23.1 sugarcane ethanol
-JET_FUEL_CO2 = 90             #gCO2/MJ for conventional jet fuel
+GASOLINE_MINUS_ETHANOL = 54.2 #gCO2/MJ; 75.5 gasoline less 21.3 sugarcane ethanol
+JET_FUEL_CO2 = 89             #gCO2/MJ for conventional jet fuel (CORSIA default)
 
 #Nominal ATJ point. 0.41 is the decided value, matching the manuscript caption and
 #SI Table S2. The published image plotted the star at 0.42, which was the anomaly:
