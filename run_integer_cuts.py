@@ -45,7 +45,7 @@ parser.add_argument("--saf-premium", type=float, default=0,
 parser.add_argument("--eth-premium", type=float, default=0,
                     help="ethanol premium price, R$/m3 ethanol (default: 0)")
 parser.add_argument("--max-saf-capacity", type=float, default=700000,
-                    help="maximum ATJ capacity per site, m3 ethanol (default: 700000)")
+                    help="maximum ATJ capacity per site, m3 SAF (default: 700000)")
 parser.add_argument("--mip-gap", type=float, default=0.00003,
                     help="Gurobi MIPGap (default: 0.00003, i.e. 0.003%%)")
 parser.add_argument("--quiet", action="store_true", help="suppress the solver log")

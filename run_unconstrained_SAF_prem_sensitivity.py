@@ -30,7 +30,7 @@ parser.add_argument("--data", default="base_case_data_with_demands.xlsx",
 parser.add_argument("--eth-premium", type=float, default=0,
                     help="ethanol premium price, R$/m3 ethanol (default: 0)")
 parser.add_argument("--max-saf-capacity", type=float, default=700000,
-                    help="maximum ATJ capacity per site, m3 ethanol (default: 700000)")
+                    help="maximum ATJ capacity per site, m3 SAF (default: 700000)")
 parser.add_argument("--mip-gap", type=float, default=0.0005,
                     help="Gurobi MIPGap; looser than elsewhere because the exact "
                          "SAF investment locations do not matter here (default: 0.0005)")

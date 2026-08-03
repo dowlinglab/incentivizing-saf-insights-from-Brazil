@@ -1,7 +1,8 @@
 # Conda environment to reproduce "Incentivizing Sustainable Aviation Fuel:
 # Supply Chain and Policy Insights from Brazil."
 #
-# The manuscript reports Pyomo v6.6.1 + Gurobi v10.0.3 on Linux (Notre Dame CRC).
+# The manuscript reports Pyomo v6.6.1 + Gurobi v12.0.2 on Linux (Notre Dame CRC),
+# the version recorded in every CRC solver log.
 # This file pins Pyomo to 6.6.1 and the scientific stack to the same era
 # (numpy < 2, pandas 2.0) so the model builds identically on osx-arm64.
 #
