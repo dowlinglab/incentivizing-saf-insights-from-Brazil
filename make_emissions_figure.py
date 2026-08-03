@@ -17,7 +17,7 @@ Letters follow the row order of SI Table S2, so A-E read down that table.
 
 Examples:
     python make_emissions_figure.py
-    python make_emissions_figure.py --output /path/to/images/emissions_v7.png
+    python make_emissions_figure.py --output Results_Figures/emissions_v8.png
 """
 
 import argparse
@@ -39,27 +39,45 @@ JET_MJ_PER_M3 = 35_300        #energy density of jet fuel and SAF
 GASOLINE_MINUS_ETHANOL = 52.4 #gCO2/MJ; 75.5 gasoline less 23.1 sugarcane ethanol
 JET_FUEL_CO2 = 90             #gCO2/MJ for conventional jet fuel
 
-#Nominal ATJ point. The published figure plots the star at conversion 0.42 while
-#the caption and SI Table S2 both say 0.41; that discrepancy is an open item in
-#claude_audit2.tex, so the published value is kept here rather than silently
-#resolved. Change with --nominal-conv once the authors decide.
+#Nominal ATJ point. 0.41 is the decided value, matching the manuscript caption and
+#SI Table S2. The published image plotted the star at 0.42, which was the anomaly:
+#0.41 reproduces the 2.4 Mt CO2/yr headline that appears in the abstract, Key
+#Finding 1 and Conclusion 1, whereas 0.42 gives 2.26. Confirmed by the author.
+#Use --nominal-conv 0.42 to reproduce the superseded position.
 NOMINAL_EMISSIONS = 45
-NOMINAL_CONVERSION = 0.42
+NOMINAL_CONVERSION = 0.41
 
 #Theoretical maximum ethanol-to-SAF conversion from the carbon balance in
 #SI Section S5.1 (\label{sec: best SAF conv}; confirmed against SI_jcp.aux)
 CONVERSION_UPPER_BOUND = 0.65
 
 #Literature points, in SI Table S2 row order, which fixes the A-E labelling.
-#park2022techno is plotted at 37 gCO2/MJ to match the published figure; SI
-#Table S2 lists 1.63 for the same study. That disagreement is also an open audit
-#item and is deliberately not resolved here.
+#
+#park2022techno at 37 gCO2/MJ is correct and no longer an open item: their 1.63 is
+#kg CO2,eq per kg of product, which at this study's jet energy density of
+#44.1 MJ/kg is 36.9 gCO2/MJ. SI Table S2 has been corrected to 37.
+#
+#Three values were revised against primary sources:
+#  A tanzil2022evaluation  conversion 0.42 -> 0.41. Their SI Table S2B adopts a
+#    total fuel yield of 0.6 kg fuel per kg ethanol directly from Geleynse et al.
+#    (2018), the same ATJ technology used here, so their conversion is identical
+#    to our nominal rather than 0.01 above it. SI Table S2 already listed 0.41.
+#  C de2017life           emissions 26.0 -> 31.0. The genuine error in the
+#    published figure. 26 was read off their Figure 5, captioned "Sensitivity
+#    analysis on hydrogen consumption, N fertilizer input and conversion yield" --
+#    a sensitivity bound, not a central estimate. Their Table 4 gives
+#    ATJ/sugarcane as 31 gCO2-eq/MJ, identically under energy allocation and
+#    displacement.
+#  E pescarini2025strategic emissions 26.0 -> 27.0. Scenario ATJ1G-C (first-
+#    generation ethanol, no biomethane, no direct land use change): SI Table A.16
+#    gives 1.71 Mt CO2e against a delivered SAF demand of 63.4 PJ, i.e.
+#    26.97 gCO2e/MJ. Confirmed by the author.
 LITERATURE = [
-    ("A", 2.3, 0.42, "tanzil2022evaluation"),
+    ("A", 2.3, 0.41, "tanzil2022evaluation"),
     ("B", 20.7, 0.26, "klein2018techno"),
-    ("C", 26.0, 0.40, "de2017life"),
+    ("C", 31.0, 0.40, "de2017life"),
     ("D", 37.0, 0.56, "park2022techno"),
-    ("E", 26.0, 0.27, "pescarini2025strategic"),
+    ("E", 27.0, 0.27, "pescarini2025strategic"),
 ]
 
 
@@ -119,11 +137,11 @@ def build(output, nominal_conv, dpi):
     print(f"wrote {output}")
 
     nominal = net_emissions(NOMINAL_EMISSIONS, nominal_conv)
-    at_caption_value = net_emissions(NOMINAL_EMISSIONS, 0.41)
+    superseded = net_emissions(NOMINAL_EMISSIONS, 0.42)
     print(f"  net emissions at the plotted nominal "
           f"({NOMINAL_EMISSIONS} gCO2/MJ, {nominal_conv}): {nominal:.2f} Mt CO2/yr")
-    print(f"  net emissions at the caption's 0.41 conversion        : "
-          f"{at_caption_value:.2f} Mt CO2/yr  <- the published 2.4 Mt")
+    print(f"  for the record, at the superseded 0.42 conversion      : "
+          f"{superseded:.2f} Mt CO2/yr")
     print("  literature labels: " +
           ", ".join(f"{l}={k}" for l, _, _, k in LITERATURE))
 
@@ -137,8 +155,8 @@ parser.add_argument("--output",
                          "emissions_labelled_regenerated.png)")
 parser.add_argument("--nominal-conv", type=float, default=NOMINAL_CONVERSION,
                     help=f"ATJ conversion for the nominal star "
-                         f"(default: {NOMINAL_CONVERSION}, the published value; "
-                         f"the caption says 0.41)")
+                         f"(default: {NOMINAL_CONVERSION}, matching the caption and "
+                         f"SI Table S2; pass 0.42 for the superseded position)")
 parser.add_argument("--dpi", type=int, default=400, help="output resolution (default: 400)")
 args = parser.parse_args()
 
