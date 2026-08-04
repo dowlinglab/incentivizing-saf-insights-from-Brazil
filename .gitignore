@@ -1,0 +1,9 @@
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+.DS_Store
+
+# Regenerated artifacts. The committed originals are the published ones;
+# see the README section "Published artifacts that must not be overwritten".
+*_regenerated.png
+*_regenerated.html

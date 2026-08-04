@@ -21,7 +21,8 @@ def create_supply_chain_model(data, saf_prem, eth_prem, blend, max_saf_capacity,
             saf_prem: premium price for sustainable aviation fuel, units: R$/m3 saf
             eth_prem: premium price for ethanol sold to mills to make saf units: R$/m3 eth
             individual_demand: True if indivual airport demands are to be satified by SAF, otherwise False
-            max_saf_capacity: Maximum size for SAF technology at each mill, units: m3 eth
+            max_saf_capacity: Maximum size for SAF technology at each mill, units: m3 SAF
+                              (bounds m.x[u,'saf'] directly; see the saf_investment_upper constraint)
             breakpoints: Number of breakpoints for the linear piece-wise surrogate model, defualt: 10
             profit_obj: Determines the mode of the objective: True: Maximize Profit, False Minimize Cost
             grass_roots_factor: Factor to increase the brownfield CAPEX for greenfield implimentation
@@ -666,9 +667,14 @@ def create_supply_chain_model(data, saf_prem, eth_prem, blend, max_saf_capacity,
     m.individual_mill_to_mill_log_cost = pyo.Expression(m.MILLS, rule = individual_mill_to_mill_log_cost)
 
     #Mill to Mill Logistic Cost
-    def mill_to_mill_logsitic_cost(m):
-        return sum(sum((m.logistic_cost*m.mill_distance[i,j]* m.vol_eth_sold[i,j]  + m.fixed_logistic_cost*m.vol_eth_sold[i,j]) for i in m.MILLS if i != j) for j in m.MILLS if i != j ) 
-    m.mill_to_mill_logistic_cost = pyo.Expression(rule = mill_to_mill_logsitic_cost)
+    def mill_to_mill_logistic_cost(m):
+        #The outer generator previously carried an `if i != j` guard, but `i` is not
+        #bound there -- it resolved to a leftover integer from an earlier loop, making
+        #the comparison vacuously true. The inner generator already excludes i == j,
+        #so dropping the outer guard leaves the value unchanged and removes a
+        #NameError waiting for the next refactor.
+        return sum(sum((m.logistic_cost*m.mill_distance[i,j]* m.vol_eth_sold[i,j]  + m.fixed_logistic_cost*m.vol_eth_sold[i,j]) for i in m.MILLS if i != j) for j in m.MILLS)
+    m.mill_to_mill_logistic_cost = pyo.Expression(rule = mill_to_mill_logistic_cost)
 
     #Individual Mill to Airport Logistic Cost
     def individual_mill_to_airport_log_cost(m,j):

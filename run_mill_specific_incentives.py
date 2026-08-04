@@ -1,63 +1,100 @@
-# from create_sc_model_with_demand import *
-from create_sc_model_full import *
-import os
-import pandas as pd
-import numpy as np
+"""Mill-specific incentive study.
 
+Solves the central planner formulation (minimize total supply chain cost) with
+ATJ capacity at mills, treating the mill-specific incentive s[u] as a decision
+variable, and sweeps the SAF premium price. Each mill is additionally required to
+earn at least its reference profit, which is what the incentives pay for.
+
+Results are written to mill_specific_incentives/sp<premium>_e<premium>_interest_mid_blend_<pct>/.
+
+Examples:
+    python run_mill_specific_incentives.py
+    python run_mill_specific_incentives.py --saf-premiums 0 1500 3000
+"""
+import argparse
+import os
+
+import numpy as np
+import pandas as pd
+
+from create_sc_model_full import *
+
+parser = argparse.ArgumentParser(description=__doc__,
+                                 formatter_class=argparse.RawDescriptionHelpFormatter)
+parser.add_argument("--saf-premiums", type=float, nargs="+",
+                    default=[0, 500, 1000, 1500, 2000, 2500, 3000],
+                    help="SAF premium prices to sweep, R$/m3 SAF "
+                         "(default: 0 500 1000 1500 2000 2500 3000)")
+parser.add_argument("--blends", type=float, nargs="+", default=[0.5],
+                    help="SAF blend requirements to solve, as fractions (default: 0.5)")
+parser.add_argument("--results-dir", default="mill_specific_incentives",
+                    help="output folder name (default: mill_specific_incentives)")
+parser.add_argument("--data", default="base_case_data_with_demands.xlsx",
+                    help="input data workbook")
+parser.add_argument("--eth-premium", type=float, default=0,
+                    help="ethanol premium price, R$/m3 ethanol (default: 0)")
+parser.add_argument("--max-saf-capacity", type=float, default=700000,
+                    help="maximum ATJ capacity per site, m3 SAF (default: 700000)")
+parser.add_argument("--mip-gap", type=float, default=0.0003,
+                    help="Gurobi MIPGap; larger than elsewhere to avoid extensive "
+                         "computation times (default: 0.0003)")
+parser.add_argument("--quiet", action="store_true", help="suppress the solver log")
+args = parser.parse_args()
+
+#Resolve paths relative to this script so the run works from any directory
 this_file_path = os.path.dirname(os.path.realpath(__file__))
 
+#Specify Input Data
+data = args.data if os.path.isabs(args.data) else os.path.join(this_file_path, args.data)
+
 # create a directory to save results
-results_dir1 = os.path.join(this_file_path, "mill_specific_incentives")
-if not os.path.isdir(results_dir1):
-    os.mkdir(results_dir1)
+results_dir1 = os.path.join(this_file_path, args.results_dir)
+os.makedirs(results_dir1, exist_ok=True)
 
-#Specify a blend range to iterate over
-# blend_range = np.linspace(0,1,11)
-blend_range = [.5]
-# prem_range = [2156]
+#Create supply chain model - For this case we consider Case 1, upgrading at mills only,
+#blend at refinery or airport, minimize supply chain cost. Note that m.s (the
+#mill-specific incentive) is deliberately left free here; it is the variable being sized.
+m = create_supply_chain_model(data, args.saf_premiums[0], args.eth_premium, args.blends[0],
+                              args.max_saf_capacity, profit_obj = False,
+                              grass_roots_factor=0.5, breakpoints=10, ref_blend=True)
 
-#Specify Input Data and Parameters
-data = 'base_case_data_with_demands.xlsx'
-saf_prem = 3000 #Set the base SAF premium iterations included are 0, 500, 1000, 1500, 2000, 2500, 3000
-eth_prem = 0 #No ethanol premium
-max_saf_capacity = 700000
-blend = 0.5 #Set the SAF blend requirment to 50%
+#Fix to no saf capacity at all airports
+for i in m.AIRPORTS:
+    m.z[i].fix(0)
 
-#Create supply chain model - For this case we consider Case 1, upgrading at mills only, blend at refinery or airport, minimize supply chain cost
-m = create_supply_chain_model(data, saf_prem, eth_prem, blend, max_saf_capacity, profit_obj = False, grass_roots_factor=0.5, breakpoints=10, ref_blend=True)
+#Fix to no SAF capacity at all refineries
+for i in m.REFINERIES:
+   m.y_ref[i].fix(0)
+
+#Raise the individual mill profit lower bound from 0 to the reference profit. This
+#replaces the ind_profs >= 0 constraint that create_supply_chain_model installs;
+#del_component/add_component makes the replacement explicit instead of relying on
+#Pyomo's implicit-replacement warning.
+def positive_profs(m,i):
+    return m.ind_profs[i] >= m.reference_profit1b[i]
+m.del_component(m.pos_profs)
+m.add_component('pos_profs', pyo.Constraint(m.MILLS, rule = positive_profs))
+
+solver = pyo.SolverFactory('gurobi')
+solver.options['MIPGap'] = args.mip_gap
 
 #Loop through the premium range
-p=50
-for k in blend_range: 
+for saf_prem in args.saf_premiums:
+  for k in args.blends:
     #Create a new directory to save results for each scenario/case
-    results_dir = os.path.join(results_dir1, "sp3000_e0_interest_mid_blend_" + str(p)) #Change the name of the case study as you loop through premium prices options sp0_e0, sp500_e0, sp1000_e0, sp1500_e0, sp2000_e0, sp2500_e0, sp3000_e0
-    if not os.path.isdir(results_dir):
-        os.mkdir(results_dir)
-        
-    #Specify SAF Premium Parameter
+    results_dir = os.path.join(results_dir1,
+                               "sp" + str(int(saf_prem))
+                               + "_e" + str(int(args.eth_premium))
+                               + "_interest_mid_blend_" + str(int(round(k * 100))))
+    os.makedirs(results_dir, exist_ok=True)
+
+    #Specify SAF Premium and Blend Requirement Parameters
+    m.saf_premium = saf_prem
     m.blend_requirement= k
 
-    #Fix to no saf capacity at all airports
-    for i in m.AIRPORTS:
-        m.z[i].fix(0)
-
-    #Fix to no SAF capacity at all refineries
-    for i in m.REFINERIES:
-       m.y_ref[i].fix(0)
-    
-    #Increase the individual mill profit upper bound to the reference profit when maximizing mill profits
-    def positive_profs(m,i):
-        return m.ind_profs[i] >= m.reference_profit1b[i]
-    m.pos_profs = pyo.Constraint(m.MILLS, rule = positive_profs)
-        
-        
-
-    solver = pyo.SolverFactory('gurobi')
-
-    solver.options['MIPGap'] = 0.0003 #Larger MIP gap to avoid extensive computation times
-    
-    
-    results = solver.solve(m, tee=True)
+    print("=== SAF premium " + str(saf_prem) + " R$/m3, blend requirement " + str(k),
+          flush=True)
+    results = solver.solve(m, tee=not args.quiet)
 
     #Save Connection Data to CSV File
 
@@ -77,7 +114,7 @@ for k in blend_range:
                 mill_volumes[i].append(0)
                 
     mill_vol = pd.DataFrame.from_dict(mill_volumes)
-    mill_vol.to_csv(results_dir + "/mill_to_mill_volumes.csv")
+    mill_vol.to_csv(os.path.join(results_dir, "mill_to_mill_volumes.csv"))
 
     #Mill to Mill Connections
     mill_connections={}
@@ -95,7 +132,7 @@ for k in blend_range:
                 mill_connections[i].append(0)
 
     mill_con = pd.DataFrame.from_dict(mill_connections)
-    mill_con.to_csv(results_dir + "/mill_to_mill_connections.csv")
+    mill_con.to_csv(os.path.join(results_dir, "mill_to_mill_connections.csv"))
 
     #Mill to Airport Volumes SAF
     airport_volumes={}
@@ -110,7 +147,7 @@ for k in blend_range:
                 airport_volumes[i].append(0)
 
     air_vol = pd.DataFrame.from_dict(airport_volumes)
-    air_vol.to_csv(results_dir + "/mill_to_airport_volumes.csv")
+    air_vol.to_csv(os.path.join(results_dir, "mill_to_airport_volumes.csv"))
             
     #Mill to Airport Connections SAF
     airport_connections={}
@@ -125,7 +162,7 @@ for k in blend_range:
                 airport_connections[i].append(0)
                 
     air_con = pd.DataFrame.from_dict(airport_connections)
-    air_con.to_csv(results_dir + "/mill_to_airport_connections.csv")
+    air_con.to_csv(os.path.join(results_dir, "mill_to_airport_connections.csv"))
 
     #Mill to Airport Volumes Ethanol
     airport_volumes={}
@@ -140,7 +177,7 @@ for k in blend_range:
                 airport_volumes[i].append(0)
 
     air_vol = pd.DataFrame.from_dict(airport_volumes)
-    air_vol.to_csv(results_dir + "/mill_to_airport_volumes_eth.csv")
+    air_vol.to_csv(os.path.join(results_dir, "mill_to_airport_volumes_eth.csv"))
             
     #Mill to Airport Connections SAF
     airport_connections={}
@@ -155,7 +192,7 @@ for k in blend_range:
                 airport_connections[i].append(0)
                 
     air_con = pd.DataFrame.from_dict(airport_connections)
-    air_con.to_csv(results_dir + "/mill_to_airport_connections_eth.csv")
+    air_con.to_csv(os.path.join(results_dir, "mill_to_airport_connections_eth.csv"))
 
     #Mill to Refinery Volumes Ethanol
     ref_volumes = {}
@@ -170,7 +207,7 @@ for k in blend_range:
                 ref_volumes[i].append(0)
 
     ref_vol = pd.DataFrame.from_dict(ref_volumes)
-    ref_vol.to_csv(results_dir + "/mill_to_ref_vol_eth.csv")
+    ref_vol.to_csv(os.path.join(results_dir, "mill_to_ref_vol_eth.csv"))
 
     #Mill to Refinery Volumes SAF
     ref_volumes = {}
@@ -185,7 +222,7 @@ for k in blend_range:
                 ref_volumes[i].append(0)
 
     ref_vol = pd.DataFrame.from_dict(ref_volumes)
-    ref_vol.to_csv(results_dir + "/mill_to_ref_vol_saf.csv")
+    ref_vol.to_csv(os.path.join(results_dir, "mill_to_ref_vol_saf.csv"))
 
     #Refinery to Airports Volumes Blended SAF
     ref_volumes = {}
@@ -200,7 +237,7 @@ for k in blend_range:
                 ref_volumes[i].append(0)
 
     ref_vol = pd.DataFrame.from_dict(ref_volumes)
-    ref_vol.to_csv(results_dir + "/ref_to_air_vol_saf.csv")
+    ref_vol.to_csv(os.path.join(results_dir, "ref_to_air_vol_saf.csv"))
 
     #Other Important Results Data
     #Important Results Data Indexed by Mills
@@ -233,16 +270,31 @@ for k in blend_range:
     key_results['individual profit'] = []
     key_results['capacity'] = []
     key_results['incentives'] = []
+    #Incentive per liter of SAF (R$/L), which is what SensitivtyAnalysis.ipynb plots.
+    #Previously added to these CSVs by an undocumented post-processing step.
+    key_results['payment'] = []
+
+    #These expressions are identical for every mill, airport and refinery. Evaluating
+    #each once rather than once per index writes exactly the same values and saves
+    #roughly 10 minutes per instance (each evaluation costs ~0.55 s).
+    total_profit = pyo.value(m.profit_expression)
+    total_additional_costs = pyo.value(m.additional_costs)
+    total_sc_cost = pyo.value(m.sc_cost_expression)
+    total_objective = pyo.value(m.objective)
+    total_logistic = (pyo.value(m.mill_to_mill_logistic_cost)
+                      + pyo.value(m.mill_to_airport_logistic_cost)
+                      + pyo.value(m.mill_to_ref_logistic_cost)
+                      + pyo.value(m.ref_to_air_logistic_cost))
 
     for i in m.MILLS:
         key_results['OPEX'].append(pyo.value(m.individual_opex_mill[i]))
         key_results['CAPEX'].append(pyo.value(m.CAPEX[i]))
         key_results['logistic'].append(pyo.value(m.individual_mill_to_mill_log_cost[i]) + pyo.value(m.individual_mill_to_airport_log_cost[i]) + pyo.value(m.individual_mill_to_ref_log_cost[i]))
         key_results['individual profit'].append(pyo.value(m.ind_profs[i]))
-        key_results['profit'].append(pyo.value(m.profit_expression))
-        key_results['additional costs'].append(pyo.value(m.additional_costs))
-        key_results['sc cost'].append(pyo.value(m.sc_cost_expression))
-        key_results['objective'].append(pyo.value(m.objective))
+        key_results['profit'].append(total_profit)
+        key_results['additional costs'].append(total_additional_costs)
+        key_results['sc cost'].append(total_sc_cost)
+        key_results['objective'].append(total_objective)
         key_results['et'].append(pyo.value(m.x[i,'et']))
         key_results['etmk'].append(pyo.value(m.x[i,'etmk']))
         key_results['etsaf'].append(pyo.value(m.x[i,'etsaf']))
@@ -261,9 +313,12 @@ for k in blend_range:
         key_results['d'].append(pyo.value(m.x[i,'d']))
         key_results['capacity'].append(pyo.value(m.Sugarcane_Capacity[i]))
         key_results['incentives'].append(pyo.value(m.s[i]))
+        saf_volume = pyo.value(m.x[i,'saf'])
+        key_results['payment'].append(pyo.value(m.s[i]) / (saf_volume * 1000)
+                                      if saf_volume > 1e-6 else 0)
 
     results = pd.DataFrame.from_dict(key_results)
-    results.to_csv(results_dir + '/key_results_mills.csv')
+    results.to_csv(os.path.join(results_dir, 'key_results_mills.csv'))
 
     #Important Results Data Indexed by Airports
     key_results={}
@@ -287,8 +342,8 @@ for k in blend_range:
         key_results['OPEX'].append(pyo.value(m.individual_opex_air[a]))
         key_results['CAPEX'].append(pyo.value(m.CAPEX_air[a]))
         key_results['total cost'].append(pyo.value(m.CAPEX_air[a]) + pyo.value(m.individual_opex_air[a]))
-        key_results['additional costs'].append(pyo.value(m.additional_costs))
-        key_results['objective'].append(pyo.value(m.objective))
+        key_results['additional costs'].append(total_additional_costs)
+        key_results['objective'].append(total_objective)
         key_results['et'].append(pyo.value(m.v[a,'et']))
         key_results['SAF'].append(pyo.value(m.v[a,'saf']))
         key_results['g'].append(pyo.value(m.v[a,'g']))
@@ -299,7 +354,7 @@ for k in blend_range:
         key_results['sugar'].append(pyo.value(m.p['sug']))
 
     results = pd.DataFrame.from_dict(key_results)
-    results.to_csv(results_dir + '/key_results_air.csv')
+    results.to_csv(os.path.join(results_dir, 'key_results_air.csv'))
 
     #Important Results Data Indexed by Refinery
     key_results={}
@@ -320,9 +375,9 @@ for k in blend_range:
         key_results['OPEX'].append(pyo.value(m.individual_opex_ref[i]))
         key_results['CAPEX'].append(pyo.value(m.CAPEX_ref[i]))
         # key_results['total cost'].append(pyo.value(m.CAPEX_air[a]) + pyo.value(m.individual_opex_air[a]))
-        key_results['total logistic'].append(pyo.value(m.mill_to_mill_logistic_cost) + pyo.value(m.mill_to_airport_logistic_cost) + pyo.value(m.mill_to_ref_logistic_cost) + pyo.value(m.ref_to_air_logistic_cost))
-        key_results['additional costs'].append(pyo.value(m.additional_costs))
-        key_results['objective'].append(pyo.value(m.objective))
+        key_results['total logistic'].append(total_logistic)
+        key_results['additional costs'].append(total_additional_costs)
+        key_results['objective'].append(total_objective)
         key_results['blended SAF'].append(pyo.value(m.x_ref[i,'blended saf']))
         key_results['SAF'].append(pyo.value(m.x_ref[i,'saf']))
         key_results['g'].append(pyo.value(m.x_ref[i,'g']))
@@ -330,4 +385,4 @@ for k in blend_range:
         
 
     results = pd.DataFrame.from_dict(key_results)
-    results.to_csv(results_dir + '/key_results_ref.csv')
+    results.to_csv(os.path.join(results_dir, 'key_results_ref.csv'))
