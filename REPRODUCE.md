@@ -76,6 +76,16 @@ license at `~/gurobi.lic`.
 Every run script takes command-line arguments; nothing needs to be hand-edited.
 Use `--help` on any of them for the full list.
 
+> **Expect different facility locations than the committed results.** The designs
+> are degenerate: many lie within the MIP gap and some candidate mills are under
+> 3 km apart, so the Gurobi version, platform and thread count change which optimum
+> is returned. Objectives will agree to well within the gap; the selected sites and
+> their *count* will not. This is expected rather than a failed reproduction —
+> section 7 below documents what a rerun actually produced, and the README's
+> "Read this before comparing your results to ours" summarises what is and is not
+> robust. Use `--results-dir` to avoid overwriting the committed results while you
+> compare.
+
 ```bash
 # Cases 1-4, blends 0-50% (the 24 manuscript instances)
 for c in 1 2 3 4; do python run_blend_and_opt_sensitivity.py --case $c; done

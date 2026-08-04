@@ -27,6 +27,55 @@ Use `--results-dir` to write somewhere other than the committed result folders.
 [REPRODUCE.md](REPRODUCE.md) covers the environment in detail;
 [PROVENANCE.md](PROVENANCE.md) records what the original runs actually used.
 
+## Read this before comparing your results to ours
+
+**The optimal designs are degenerate. If you rerun these case studies you should
+expect a different set of ATJ facilities than the committed results and the
+manuscript report, and that is not an error.**
+
+Many designs lie within the MIP gap at essentially the same cost, and some
+candidate mills are less than 3 km apart. Which one the solver returns depends on
+the tie-breaking, and therefore on:
+
+- the Gurobi version (three are on record for the published results — see below),
+- the platform and operating system,
+- the thread count, and
+- Gurobi's own heuristics and search path, which are not guaranteed stable across
+  versions.
+
+Rerunning Case 1 at a 50% blend on macOS/M1 with Gurobi 10.0.1 selected **11 mills
+where the committed result has 7**, sharing 5. Case 2 went from 7 refineries to 4.
+Both are certified optimal within the stated gap, and the objectives agree to
+0.00086% — well inside the 0.003% gap.
+
+### What is and is not robust
+
+| quantity | robust? |
+|---|---|
+| objective values, costs, profits | **yes** — agree to well within the MIP gap |
+| SAF production volumes, blend-level trends | **yes** |
+| the threshold SAF premium (2.6 R$/L) and the tornado rankings | **yes** |
+| *which* mills are selected | **no** — but the highest-frequency mills recur |
+| *how many* facilities are selected | **no** — this moves with the solver |
+| Table 4's Mt·km totals, which are derived from the chosen sites | **no** |
+
+The divergence is a **validation, not a defect**. Every mill that differed is
+already inside the degenerate set the paper's own integer-cut analysis
+characterises, and the mills both runs agree on are exactly the highest-frequency
+ones — the four selected in 10 of 10 cut iterations plus the one selected in 9.
+That an independent run on a different platform and solver version reaches the same
+core sites by a different route is stronger evidence for those sites than the
+integer-cut analysis alone, which used one solver on one machine.
+
+So treat the committed designs as **one representative optimum**, not *the*
+optimum. If you need the exact committed design, you need the original solver
+version and platform; see [PROVENANCE.md](PROVENANCE.md).
+
+Full evidence, mill by mill, is in
+[RERUN_REPORT.md](RERUN_REPORT.md#the-site-set-divergence-is-gap-degeneracy--and-it-validates-key-finding-2);
+[REPRODUCE.md](REPRODUCE.md) section 7 records what the rerun produced instance by
+instance.
+
 ## Dependencies
 
 Pyomo 6.6.1, and Gurobi via Pyomo's `SolverFactory('gurobi')` — which is the
@@ -50,9 +99,12 @@ The manuscript quotes a single 0.003%; the scripts do not all use it.
 | Mill-specific incentives (`run_mill_specific_incentives.py`) | 3e-4 (0.03%) |
 | Case 5 and tornado scenarios | 5e-4 (0.05%) |
 
-Solutions differ *within* these gaps. In particular the set and number of chosen
-investment sites is not unique for Cases 1 and 2 — see
-[RERUN_REPORT.md](RERUN_REPORT.md).
+Solutions differ *within* these gaps: the set and number of chosen investment sites
+is not unique, and a rerun will generally not reproduce the committed designs. This
+is expected — see
+[Read this before comparing your results to ours](#read-this-before-comparing-your-results-to-ours)
+above. The looser the gap, the larger the set of designs that qualify, so Case 5 and
+the tornado scenarios at 5e-4 admit more variation than Cases 1–4 at 3e-5.
 
 ## Case studies
 
