@@ -61,7 +61,7 @@ Both are certified optimal within the stated gap, and the objectives agree to
 
 The divergence is a **validation, not a defect**. Every mill that differed is
 already inside the degenerate set the paper's own integer-cut analysis
-characterises, and the mills both runs agree on are exactly the highest-frequency
+characterizes, and the mills both runs agree on are exactly the highest-frequency
 ones — the four selected in 10 of 10 cut iterations plus the one selected in 9.
 That an independent run on a different platform and solver version reaches the same
 core sites by a different route is stronger evidence for those sites than the
@@ -129,6 +129,7 @@ the tornado scenarios at 5e-4 admit more variation than Cases 1–4 at 3e-5.
 | `run_tornado_sensitivity.py` | Case 5 under ±20% parameter changes (Figure 10) |
 | `run_create_maps.py` | runs `create_maps` for a chosen case and blend |
 | `make_tornado.py` | builds Figure 10 from the scenario CSVs |
+| `make_emissions_figure.py` | builds Figure 6 end to end, including the 0.65 bound, the A–E labels and the CORSIA lines |
 | `model_statistics.py` | MILP size per formulation, against the manuscript and the solver logs |
 | `supply_chain_distances.py` | mass-distance per stage — the corrected Table 4 calculation |
 | `consolidate_integer_cuts.py` | builds `integer_cut_organized_data.xlsx` from the raw cuts |
@@ -137,7 +138,7 @@ the tornado scenarios at 5e-4 admit more variation than Cases 1–4 at 3e-5.
 
 | notebook | figures |
 |---|---|
-| `SupplyChainSummary.ipynb` | `ninepanelproductsummary_pos_v2.png`, `fourpanelcostsummary.png`, `emissions_sensitivity.png` |
+| `SupplyChainSummary.ipynb` | `ninepanelproductsummary_pos_v4.png` **and `_v4.eps`**, `fourpanelcostsummary.png`, `emissions_sensitivity.png` |
 | `SupplyChainMaps.ipynb` | `fourpanelinputdata.png` (+legend), `optimalsclocationszoom.png`, `optimaldesign_legend.png`, `optimaldesignmap50.png` |
 | `SensitivtyAnalysis.ipynb` | `additionalSAFcost.png`, `unconstrained_SAF.png`, `millspecficincentivestudy.png` |
 | `integercutanalysis.ipynb` | `integercutlocations.png`, `integercutlocationszoom.png` |
@@ -148,17 +149,26 @@ previously computed (Σ distances)(Σ volumes)ρ instead of Σ(volume × distanc
 reproduced none of Table 4's entries — Case 1 Stage 1 came out as 5,913 Mt·km
 against the 455 published.
 
-## Published artefacts that must not be overwritten
+## Published artifacts that must not be overwritten
 
-Two committed figures are **byte-identical** to the manuscript's images, and that
+These committed figures are **byte-identical** to the manuscript's images, and that
 identity is what establishes their provenance:
 
-| file | identical to |
-|---|---|
-| `Results_Figures/tornado.png` | `images/tornado.png` (Figure 10) |
-| `Results_Figures/ninepanelproductsummary_pos_v2.png` | `images/ninepanelproductsummary_pos_v2.png` (Figure 5) |
+| file | identical to | |
+|---|---|---|
+| `Results_Figures/tornado.png` | `images/tornado.png` | Figure 10 |
+| `Results_Figures/ninepanelproductsummary_pos_v4.png` | `images/ninepanelproductsummary_pos_v4.png` | Figure 5, the `.png` |
+| `Results_Figures/ninepanelproductsummary_pos_v4.eps` | `images/ninepanelproductsummary_pos_v4.eps` | **Figure 5 as embedded** |
+| `Results_Figures/emissions_v11.png` | `images/emissions_v11.png` | **Figure 6 as embedded** |
+| `Results_Figures/ninepanelproductsummary_pos_v2.png` | `images/ninepanelproductsummary_pos_v2.png` | Figure 5, **superseded** |
 
-The 22 committed `mill_airport_map.html` files are published artefacts too — the 20
+`_v2` was Figure 5 before the emission-factor correction; the manuscript now embeds
+`_v4`. Both are kept — `_v2` is the only provenance for the superseded figure, and
+nothing should overwrite either. Note that `ninepanelproductsummary_pos_v2.eps`
+differs between the repositories: that one was converted by hand outside the
+notebook, which is exactly the step `_v4` removed.
+
+The 22 committed `mill_airport_map.html` files are published artifacts too — the 20
 SI maps (`case1_10` … `case4_50`) are screen captures of them.
 
 Regenerated output is numerically correct but not byte-identical, so the scripts
@@ -166,11 +176,15 @@ default to distinct names and `.gitignore` covers them:
 
 - `make_tornado.py` writes `Results_Figures/tornado_regenerated.png`
 - `run_create_maps.py` writes `mill_airport_map_regenerated.html` (`--output` to change)
-- `make_emissions_figure.py` writes `Results_Figures/emissions_labelled_regenerated.png` (`--output` to change)
+- `make_emissions_figure.py` writes `Results_Figures/emissions_labeled_regenerated.png` (`--output` to change)
 
-**Executing the notebooks does overwrite `Results_Figures/`**, including
-`ninepanelproductsummary_pos_v2.png`. The notebooks take no arguments, so there is
-no default to redirect. To re-execute safely, run them in a scratch directory with
+**Executing `SupplyChainSummary.ipynb` overwrites the live Figure 5** —
+`ninepanelproductsummary_pos_v4.png` *and* `_v4.eps`, both of which are currently
+byte-identical to the images the manuscript embeds. The notebooks take no arguments,
+so there is no default to redirect, and unlike the scripts they have no
+`_regenerated` fallback. Do not execute them in this working tree.
+
+To re-execute safely, run them in a scratch directory with
 the input data and `Case1`–`Case4` symlinked in, and copy back only the `.ipynb`:
 
 ```bash
@@ -192,15 +206,15 @@ the 20 SI maps are browser screen captures.
 | 2 | `problemstatement.png` | **hand-drawn schematic**, no generating script | no — by design |
 | 3 | `mill_pfd.png` | **hand-drawn schematic**, no generating script | no — by design |
 | 4 | `ref_pfd.png` | **hand-drawn schematic**, no generating script | no — by design |
-| 5 | `ninepanelproductsummary_pos_v2.eps` | `SupplyChainSummary.ipynb`; the `.png` is byte-identical to the manuscript's, the `.eps` is converted outside the notebook | panels yes, EPS conversion manual |
-| 6 | `emissions_v7.png` | `make_emissions_figure.py` | **yes** |
+| 5 | `ninepanelproductsummary_pos_v4.eps` | `SupplyChainSummary.ipynb`, which now writes the `.eps` directly as well as the `.png`; both committed copies are byte-identical to the manuscript's | **yes**, but not bit-reproducible — see below |
+| 6 | `emissions_v11.png` | `make_emissions_figure.py` | **yes**, bit-reproducible |
 | 7 | `figure5_format.eps` | **composed** from `optimaldesignmap50.png` + `optimalsclocationszoom.png` + `optimaldesign_legend.png` (`SupplyChainMaps.ipynb`) | no — manual composition |
 | 8 | `figure6_format.eps` | **composed** from `integercutlocations.png` + `integercutlocationszoom.png` (`integercutanalysis.ipynb`), plus the three red arrows | no — manual composition |
 | 9 | `figure7_format.eps` | **composed** from `additionalSAFcost.png` + `unconstrained_SAF.png` (`SensitivtyAnalysis.ipynb`) | no — manual composition |
 | 10 | `tornado.png` | `make_tornado.py`, which reads the ten `unconstrained_SAF/` CSVs | **yes** |
 | TOC | `graphic_toc.png` | hand-made table-of-contents graphic | no — by design |
 | S1–S20 | `case1_10.png` … `case4_50.png` | **screen captures** of the `mill_airport_map.html` files `run_create_maps.py` produces. The data is reproducible — the folium legend counts match Table 4 — but the pan, zoom, crop and legend state are manual | no — manual capture |
-| S21 | `fourpanelcostsummary_v2.png` | `SupplyChainSummary.ipynb` | **yes** |
+| S21 | `fourpanelcostsummary_v2.png` | `SupplyChainSummary.ipynb`, which writes `fourpanelcostsummary.png` — no `_v2` is produced by any script, and neither the notebook's output nor the committed `fourpanelcostsummary_v2.png` is byte-identical to the manuscript's | panels yes, the `_v2` edit manual |
 | S22 | `incentivestudy.png` | `SensitivtyAnalysis.ipynb`, which writes it as `millspecficincentivestudy.png` — same figure, renamed on the way into the manuscript | **yes**, modulo the rename |
 
 ### Notes on Figure 6
@@ -213,16 +227,41 @@ became silently wrong when the manuscript moved to citation-order numbering:
 `[59] [12] [51] [50] [33]` should have read `[7] [63] [64] [65] [66]`.
 
 `make_emissions_figure.py` now produces the whole figure, and the points are
-labelled **A–E** instead, with the reference mapping in the manuscript caption and
+labeled **A–E** instead, with the reference mapping in the manuscript caption and
 in SI Table S2. That keeps the image independent of the bibliography. **Do not
 reintroduce reference numbers into any figure.**
+
+The current version is `emissions_v11.png`. Three changes since the figure was
+scripted, in order: `v9` adopted the cited emission factors (ethanol 21.3, jet fuel
+89), which moved the contour field itself; `v10` added ICAO's two CORSIA default
+intensities; `v11` redrew those two as dashed **vertical lines** rather than point
+markers, because CORSIA publishes an emissions intensity and no ethanol-to-jet
+yield — a marker would have to pair ICAO's x-value with our y-value and imply they
+report a conversion they do not. Run the script with no arguments to regenerate
+safely; pass `--output` to write the versioned filename.
+
+### Notes on Figure 5's EPS
+
+The notebook writes `ninepanelproductsummary_pos_v4.eps` itself, so Figure 5 no
+longer needs the hand conversion the `_v2` EPS required. It is **not** bit-comparable
+across runs, though, for two reasons worth knowing before anyone diffs it:
+
+- matplotlib stamps a `%%CreationDate` into the EPS header, so every run differs.
+- the committed file was rendered under the earlier name `_v3.eps` and renamed in
+  `f5f9571`, so its internal `%%Title` still reads `ninepanelproductsummary_pos_v3.eps`.
+  A fresh run writes `_v4` in that field.
+
+The `.png` has no such fields and is bit-reproducible. So verify Figure 5 by
+comparing the PNG, and treat the EPS as reproducible-in-content only.
 
 ### Suffix conventions
 
 A `_v2`/`_v4`/`_v6`/`_format` suffix on a manuscript filename indicates editing
-outside the notebooks. Figures 6 and 10 and SI Figures S21–S22 can now be
-regenerated end to end; the rest still need a manual step, which is a composition
-or capture task rather than a code gap.
+outside the notebooks — with the exception of
+`ninepanelproductsummary_pos_v4`, where the notebook now writes the `_v4` name
+itself, and `emissions_v11.png`, which `make_emissions_figure.py` produces in full.
+Figures 5, 6 and 10 can now be regenerated end to end; the rest still need a manual
+step, which is a composition, capture or image-edit task rather than a code gap.
 
 ## Result folders
 
@@ -234,7 +273,7 @@ or capture task rather than a code gap.
 | `unconstrained_SAF/Case5` | Case 5 base premium sweep |
 | `unconstrained_SAF/Case 5 {High,Low} {Sugar,Cost,Jet,Ethanol,Conv}` | the ten ±20% tornado scenarios |
 | `Results_Figures` | generated panels *and* PowerPoint-composed figures — see the table above |
-| `crc_job_scripts` | how the long runs were submitted (sanitised) |
+| `crc_job_scripts` | how the long runs were submitted (sanitized) |
 
 `unconstrained_SAF/Case5/production.csv` predates the `premium` column the script
 now writes; row *i* corresponds to premium *i* × 0.1 R$/L.

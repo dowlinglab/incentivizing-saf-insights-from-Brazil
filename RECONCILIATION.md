@@ -14,7 +14,7 @@ Everything the audit's Section 10 lists as "promised but absent" is now present.
 | 2 | whatever computes Table 4's Mt·km columns | **confirmed missing**, and the table is internally inconsistent |
 | 3 | the tornado diagram | **closed** — data recovered, driver and plot written |
 | 4 | script for `integer_cut_organized_data.xlsx` | **closed** — written, and the shipped file verified faithful |
-| 5 | the mill-specific objective values | **closed** — the private copies carry the same round numbers, so this is not a migration artefact; no result depends on them |
+| 5 | the mill-specific objective values | **closed** — the private copies carry the same round numbers, so this is not a migration artifact; no result depends on them |
 | 6 | the `payment` post-processing step | **closed** — derived in the script |
 | 7 | `ne_50m_admin_0_countries.shp` | **closed** — dependency removed |
 | 8 | the 20 SI maps and figure post-processing | **documented** as manual steps |

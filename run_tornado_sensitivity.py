@@ -197,7 +197,7 @@ def run_scenario(parameter, multiplier):
             print(f"    {d}")
         worst = max((r for _, r in incidental), default=0.0)
         print(f"  incidental changes: {len(incidental)}, worst relative deviation {worst:.2e}")
-        print("    (Excel float re-serialisation; last-ULP only, no numerical effect)")
+        print("    (Excel float re-serialization; last-ULP only, no numerical effect)")
         assert len(intended) == 1, "expected exactly one intended cell change"
         assert worst < 1e-12, f"incidental change too large: {worst:.2e}"
         return tag, float("nan")

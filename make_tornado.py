@@ -13,7 +13,7 @@ definition is fixed rather than restated.
     python make_tornado.py --print-only     # thresholds, no figure
 
 Writes tornado_regenerated.png, not tornado.png. The committed tornado.png is the
-published artefact and is byte-identical to the manuscript's images/tornado.png;
+published artifact and is byte-identical to the manuscript's images/tornado.png;
 overwriting it breaks that provenance link for no gain, since the regenerated figure
 is visually identical and numerically correct but differs byte-wise.
 """
@@ -36,14 +36,14 @@ parser = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
 parser.add_argument("--results-dir", default="unconstrained_SAF")
 #Default deliberately NOT Results_Figures/tornado.png: that file is the published
-#artefact and is byte-identical to the manuscript's images/tornado.png and to the
+#artifact and is byte-identical to the manuscript's images/tornado.png and to the
 #private repository's copy. That three-way identity is what establishes Figure 10's
 #provenance, and a regenerated figure -- numerically correct but not byte-identical --
 #would silently break it. Pass --out explicitly to overwrite it.
 parser.add_argument("--out",
                     default=os.path.join("Results_Figures", "tornado_regenerated.png"),
                     help="output path (default: Results_Figures/tornado_regenerated.png; "
-                         "tornado.png is the published artefact -- do not overwrite it)")
+                         "tornado.png is the published artifact -- do not overwrite it)")
 parser.add_argument("--print-only", action="store_true")
 args = parser.parse_args()
 

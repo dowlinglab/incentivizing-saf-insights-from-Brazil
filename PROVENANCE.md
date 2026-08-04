@@ -100,7 +100,7 @@ built, while premiums just above it are the hard ones.
 | reproduction 2026-07-29 | Apple M1 Max, 10 cores, 32 GB, macOS 26.6 |
 
 Submission used Sun Grid Engine via `run_sc_model_job.py` (queue `long`); a
-sanitised copy is in `crc_job_scripts/`.
+sanitized copy is in `crc_job_scripts/`.
 
 ## Reproduction
 

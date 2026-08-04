@@ -90,7 +90,7 @@ Three things follow.
 **Every differing mill is already in the paper's documented degenerate set,** and
 the five both runs agree on are exactly the highest-frequency ones — the four
 selected in 10/10 cut iterations plus the one selected in 9/10. The rerun landed
-inside the solution set the paper itself characterises, on a different platform and
+inside the solution set the paper itself characterizes, on a different platform and
 a different Gurobi version. Objectives differ by 0.00086%, well inside the 0.003%
 gap.
 

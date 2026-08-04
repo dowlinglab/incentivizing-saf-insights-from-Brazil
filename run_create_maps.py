@@ -21,7 +21,7 @@ parser.add_argument("--blend", type=float, default=None,
 parser.add_argument("--case-folder", default=None,
                     help="results folder the solution comes from (default: Case1)")
 parser.add_argument("--output", default="mill_airport_map_regenerated.html",
-                    help="output filename inside the results folder (default: \r\n                         mill_airport_map_regenerated.html; the committed\r\n                         mill_airport_map.html files are the published artefacts)")
+                    help="output filename inside the results folder (default: \r\n                         mill_airport_map_regenerated.html; the committed\r\n                         mill_airport_map.html files are the published artifacts)")
 parser.add_argument("--blend-folder", default=None,
                     help="blend subfolder the solution comes from "
                          "(default: interest_mid_blend_50)")

@@ -66,7 +66,8 @@ license at `~/gurobi.lic`.
 | `run_mill_specific_incentives.py` | Mill-specific incentive study → `mill_specific_incentives/` |
 | `run_unconstrained_SAF_prem_sensitivity.py` | Case 5, SAF premium sweep → `unconstrained_SAF/` |
 | `run_create_maps.py` | Interactive folium HTML maps (`mill_airport_map.html`) |
-| `SupplyChainSummary.ipynb` | Figs. `ninepanelproductsummary_pos_v2`, `fourpanelcostsummary`, `emissions_sensitivity` |
+| `SupplyChainSummary.ipynb` | Figs. `ninepanelproductsummary_pos_v4` (`.png` and `.eps`), `fourpanelcostsummary`, `emissions_sensitivity` |
+| `make_emissions_figure.py` | Fig. 6 — `emissions_v11.png` when given `--output`, else `emissions_labeled_regenerated.png` |
 | `SupplyChainMaps.ipynb` | Figs. `optimalsclocationszoom`, `fourpanelinputdata`, legends |
 | `SensitivtyAnalysis.ipynb` | Figs. `additionalSAFcost`, `unconstrained_SAF`, `millspecficincentivestudy` |
 | `integercutanalysis.ipynb` | Figs. `integercutlocations`, `integercutlocationszoom` |
@@ -82,7 +83,7 @@ Use `--help` on any of them for the full list.
 > is returned. Objectives will agree to well within the gap; the selected sites and
 > their *count* will not. This is expected rather than a failed reproduction —
 > section 7 below documents what a rerun actually produced, and the README's
-> "Read this before comparing your results to ours" summarises what is and is not
+> "Read this before comparing your results to ours" summarizes what is and is not
 > robust. Use `--results-dir` to avoid overwriting the committed results while you
 > compare.
 
@@ -161,7 +162,7 @@ Linux from any working directory. What had to be fixed:
    `run_mill_specific_incentives.py` redefined `m.pos_profs`, which
    `create_supply_chain_model` already installs as `ind_profs >= 0`. Pyomo
    silently replaced it with a warning; the replacement is now explicit via
-   `del_component`/`add_component`. Behaviour is unchanged — the mill profit
+   `del_component`/`add_component`. Behavior is unchanged — the mill profit
    lower bound is raised from 0 to `reference_profit1b`.
 
 See [MISSING_FILES.md](MISSING_FILES.md) for what the repository still does not

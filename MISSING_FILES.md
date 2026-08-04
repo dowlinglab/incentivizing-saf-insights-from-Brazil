@@ -120,19 +120,25 @@ means opening 20 HTML maps and screenshotting each.
 
 | manuscript | produced by |
 |---|---|
-| ~~`emissions_v6.png`~~ → now `emissions_v7.png` | **`make_emissions_figure.py`** — generated end to end, including the dashed 0.65 bound and the A–E point labels that previously existed in neither repository. Its output is byte-identical to `images/emissions_v7.png`, making Figure 6 the only manuscript figure that is bit-reproducible from a script here. |
+| ~~`emissions_v6.png`~~ → now `emissions_v11.png` | **`make_emissions_figure.py`** — generated end to end, including the dashed 0.65 bound, the A–E point labels and the CORSIA reference lines, none of which previously existed in either repository. Its output is byte-identical to `images/emissions_v11.png`. |
 | `inputmaps_v4.png` | `fourpanelinputdata.png` + `fourpanelinputdata_legend.png` |
-| `fourpanelcostsummary_v2.png` | `fourpanelcostsummary.png` |
-| `incentivestudy.png` | `millspecficincentivestudy.png` |
-| `ninepanelproductsummary_pos_v2.eps` | `ninepanelproductsummary_pos_v2.png` |
+| `fourpanelcostsummary_v2.png` | `fourpanelcostsummary.png` — **not** byte-identical; the `_v2` edit is not captured |
+| `incentivestudy.png` | `millspecficincentivestudy.png` — rename only |
+| ~~`ninepanelproductsummary_pos_v2.eps`~~ → now `_v4.eps` | **`SupplyChainSummary.ipynb`**, which now writes the `.eps` directly instead of it being converted by hand. Byte-identical to `images/ninepanelproductsummary_pos_v4.eps`, so Figure 5 no longer needs a manual step either. |
 | `figure5_format.eps`, `figure6_format.eps`, `figure7_format.eps` | reformatted exports; source figure for each is not recorded |
 
-The `_v2`/`_v4`/`_format` suffixes mean panels were composited, relabelled, or
-converted to EPS outside the notebooks. That editing step is not captured anywhere,
-so those manuscript figures cannot be regenerated end to end even though the
-underlying plots can. Figures 6 and 10 and SI Figures S21–S22 are the exceptions —
-see the figure manifest in the [README](README.md), which carries an explicit
-"end to end?" column for every figure.
+A `_v2`/`_v4`/`_format` suffix generally means panels were composited, relabeled, or
+converted to EPS outside the notebooks, and that editing step is not captured
+anywhere, so those manuscript figures cannot be regenerated end to end even though
+the underlying plots can.
+
+Two suffixes are no longer in that category. `ninepanelproductsummary_pos_v4` is
+written under that exact name by the notebook, EPS included, and `emissions_v11.png`
+is produced in full by `make_emissions_figure.py` — so **Figures 5, 6 and 10 are now
+reproducible end to end**, where previously only 6 and 10 were. `fourpanelcostsummary_v2.png`
+(SI S21) still is not: no script writes a `_v2`, and the manuscript's copy is not
+byte-identical to the notebook's output. See the figure manifest in the
+[README](README.md), which carries an explicit "end to end?" column for every figure.
 
 **Hand-drawn, no code expected:** `problemstatement.png`, `mill_pfd.png`,
 `ref_pfd.png`, `graphic_toc.png`.

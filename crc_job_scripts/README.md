@@ -1,7 +1,7 @@
 # CRC job scripts
 
 How the long runs were submitted on the Notre Dame CRC, copied from the private
-repository and sanitised: the personal e-mail address and AFS paths are replaced
+repository and sanitized: the personal e-mail address and AFS paths are replaced
 with placeholders (`YOUR_NETID`, `<n>`, `<netid>`, `<env>`). Fill those in before
 submitting.
 

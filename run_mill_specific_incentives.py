@@ -270,7 +270,7 @@ for saf_prem in args.saf_premiums:
     key_results['individual profit'] = []
     key_results['capacity'] = []
     key_results['incentives'] = []
-    #Incentive per litre of SAF (R$/L), which is what SensitivtyAnalysis.ipynb plots.
+    #Incentive per liter of SAF (R$/L), which is what SensitivtyAnalysis.ipynb plots.
     #Previously added to these CSVs by an undocumented post-processing step.
     key_results['payment'] = []
 

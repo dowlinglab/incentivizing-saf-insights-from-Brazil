@@ -327,7 +327,7 @@ def create_model_map(results_folder1,results_folder2,output_name='mill_airport_m
 
     # Save the map to an HTML file
     #Defaults to a _regenerated name: the committed mill_airport_map.html files are
-    #the published artefacts (22 of them are tracked), and the SI's case*_*.png maps
+    #the published artifacts (22 of them are tracked), and the SI's case*_*.png maps
     #are screen captures of them. Pass output_name to overwrite deliberately.
     m.save(os.path.join(results_dir, output_name))
 

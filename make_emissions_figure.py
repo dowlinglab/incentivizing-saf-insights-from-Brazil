@@ -11,7 +11,7 @@ ethanol-to-jet yield, so plotting a point would pair ICAO's x with our y and imp
 they report a conversion. See the comment on CORSIA below for the ICAO source and
 the full reasoning.
 
-The literature points are labelled A-E rather than by reference number. The
+The literature points are labeled A-E rather than by reference number. The
 published version carried reference numbers baked into the image, which silently
 became wrong when the bibliography style changed from alphabetical
 (elsarticle-harv) to citation order: the five labels [59], [12], [51], [50], [33]
@@ -62,7 +62,7 @@ NOMINAL_CONVERSION = 0.41
 #SI Section S5.1 (\label{sec: best SAF conv}; confirmed against SI_jcp.aux)
 CONVERSION_UPPER_BOUND = 0.65
 
-#Literature points, in SI Table S2 row order, which fixes the A-E labelling.
+#Literature points, in SI Table S2 row order, which fixes the A-E labeling.
 #
 #park2022techno at 37 gCO2/MJ is correct and no longer an open item: their 1.63 is
 #kg CO2,eq per kg of product, which at this study's jet energy density of
@@ -106,7 +106,7 @@ LITERATURE = [
 #conversion process, and the later one gives 32.8 / 11.3 / 44.1.
 #
 #Deliberately NOT appended to LITERATURE. That list's row order fixes the A-E
-#labelling against SI Table S2, and check_consistency.py in the manuscript
+#labeling against SI Table S2, and check_consistency.py in the manuscript
 #repository parses LITERATURE and cross-checks all five entries against that
 #table. CORSIA is an external reference value, not one of the five studies.
 #
@@ -237,9 +237,9 @@ parser = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
 parser.add_argument("--output",
                     default=os.path.join(this_file_path, "Results_Figures",
-                                         "emissions_labelled_regenerated.png"),
+                                         "emissions_labeled_regenerated.png"),
                     help="output path (default: Results_Figures/"
-                         "emissions_labelled_regenerated.png)")
+                         "emissions_labeled_regenerated.png)")
 parser.add_argument("--nominal-conv", type=float, default=NOMINAL_CONVERSION,
                     help=f"ATJ conversion for the nominal star "
                          f"(default: {NOMINAL_CONVERSION}, matching the caption and "
