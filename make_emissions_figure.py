@@ -5,6 +5,12 @@ were previously added by hand and so lived nowhere in the repository: the dashed
 conversion upper bound at 0.65 (derived in SI Section S5.1) and the labels on the
 five literature points.
 
+ICAO's two CORSIA default intensities are also drawn, as dashed vertical lines
+rather than as points: CORSIA publishes an emissions intensity per pathway and no
+ethanol-to-jet yield, so plotting a point would pair ICAO's x with our y and imply
+they report a conversion. See the comment on CORSIA below for the ICAO source and
+the full reasoning.
+
 The literature points are labelled A-E rather than by reference number. The
 published version carried reference numbers baked into the image, which silently
 became wrong when the bibliography style changed from alphabetical
@@ -114,10 +120,16 @@ LITERATURE = [
 #The star stays a point -- both of its coordinates are ours.
 CORSIA = [("CORSIA core", 24.1), ("CORSIA total", 32.8)]
 
-#Per-letter label offsets, in points. The default puts the letter to the right of
-#its marker; C is overridden to the left because a CORSIA square sits at 32.8 on
-#the nominal-conversion line and C's marker is at 31.0, so a right-hand label
-#would land on top of that square.
+#Per-letter label offsets, in typographic points -- matplotlib's "offset points"
+#unit, not emissions units, and nothing to do with the plotted points.
+#
+#The default puts the letter to the right of its marker. C is overridden to the left
+#because the dashed CORSIA total line stands at 32.8 while C's marker is at 31.0: at
+#the default (9, -4) the letter lands at roughly 32.0 to 32.7 on the emissions axis,
+#which the line runs straight through. Measured on the render rather than reasoned
+#about -- the default gives 2 intersecting bounding-box pairs at 0 px separation,
+#the letter merging with the line, while the override gives 0. Keep the override for
+#as long as that line is at 32.8.
 LABEL_OFFSETS = {"C": (-17, -4)}
 DEFAULT_LABEL_OFFSET = (9, -4)
 
