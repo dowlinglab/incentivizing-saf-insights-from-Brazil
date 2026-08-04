@@ -17,7 +17,7 @@ Letters follow the row order of SI Table S2, so A-E read down that table.
 
 Examples:
     python make_emissions_figure.py
-    python make_emissions_figure.py --output Results_Figures/emissions_v10.png
+    python make_emissions_figure.py --output Results_Figures/emissions_v11.png
 
 Emission factors are the cited ones: sugarcane ethanol 21.3 gCO2/MJ (Seabra et al.)
 and conventional jet fuel 89 gCO2/MJ (CORSIA). The published figure was drawn with
@@ -104,9 +104,15 @@ LITERATURE = [
 #repository parses LITERATURE and cross-checks all five entries against that
 #table. CORSIA is an external reference value, not one of the five studies.
 #
-#Both points sit at the nominal conversion, so they are plotted at nominal_conv --
-#the same variable the star uses -- and --nominal-conv moves all three together.
-CORSIA = [("core", 24.1), ("total", 32.8)]
+#Drawn as dashed VERTICAL LINES, not as points. CORSIA publishes an emissions
+#intensity per pathway and no ethanol-to-jet yield, so the data is one-dimensional.
+#Plotting it as a point would pair ICAO's x with our y and imply they report a
+#conversion, which they do not. A line also says more: it shows what the CORSIA
+#intensity implies at every conversion rather than only at ours. The lines stop at
+#CONVERSION_UPPER_BOUND because conversions above it are unreachable.
+#
+#The star stays a point -- both of its coordinates are ours.
+CORSIA = [("CORSIA core", 24.1), ("CORSIA total", 32.8)]
 
 #Per-letter label offsets, in points. The default puts the letter to the right of
 #its marker; C is overridden to the left because a CORSIA square sits at 32.8 on
@@ -156,17 +162,20 @@ def build(output, nominal_conv, dpi):
     ax.scatter([e for _, e, _, _ in LITERATURE], [c for _, _, c, _ in LITERATURE],
                color="black", s=60, marker="o", label="Literature", zorder=5)
 
-    #CORSIA defaults, both at the nominal conversion. Unfilled squares so they read
-    #as reference values rather than as another study.
-    ax.scatter([e for _, e in CORSIA], [nominal_conv] * len(CORSIA),
-               facecolors="none", edgecolors="black", linewidths=1.6, s=70,
-               marker="s", label="CORSIA default", zorder=5)
-    #Annotated above, not to the right: to the right would collide with C's label
-    #and with the other square, which is only 8.7 units away on a 0-50 axis.
+    #CORSIA intensities as vertical lines -- see the comment on CORSIA for why these
+    #are not points. vlines rather than axvline so they terminate at the ceiling.
+    #Same linewidth 2 and dash style as the horizontal conversion bound, so the three
+    #reference lines read as one family.
     for tag, e in CORSIA:
-        ax.annotate(tag, (e, nominal_conv), textcoords="offset points",
-                    xytext=(0, 12), ha="center", fontsize=11, weight="bold",
-                    zorder=6)
+        ax.vlines(e, ax.get_ylim()[0], CONVERSION_UPPER_BOUND, color="black",
+                  linestyle="--", linewidth=2, zorder=4)
+        #Rotated and to the right of the line: the two lines are only 8.7 apart on a
+        #0-50 axis, so horizontal text would collide. Hung from just under the
+        #ceiling so it clears the markers lower down. Labels are deliberately short --
+        #"core" is the core LCA value and "total" adds ILUC; the caption and main text
+        #carry that explanation rather than the figure.
+        ax.text(e + 0.6, CONVERSION_UPPER_BOUND - 0.015, tag, rotation=90,
+                fontsize=11, weight="bold", va="top", ha="left", zorder=6)
 
     #Letters, not reference numbers -- see the module docstring
     for letter, e, c, _key in LITERATURE:
@@ -194,10 +203,22 @@ def build(output, nominal_conv, dpi):
           ", ".join(f"{l}={k}" for l, _, _, k in LITERATURE))
     print(f"  net emissions along the nominal-conversion line "
           f"(conversion {nominal_conv}):")
-    for tag, e in [("nominal", NOMINAL_EMISSIONS)] + [(f"CORSIA {t}", e) for t, e in
-                                                     reversed(CORSIA)]:
-        print(f"    {tag:<14} {e:>5} gCO2/MJ -> "
+    for tag, e in [("nominal", NOMINAL_EMISSIONS)] + [(t, e) for t, e in
+                                                      reversed(CORSIA)]:
+        print(f"    {tag:<26} {e:>5} gCO2/MJ -> "
               f"{net_emissions(e, nominal_conv):6.3f} Mt CO2/yr")
+
+    #Where each intensity breaks even, and what it gives at the ceiling. This is the
+    #interpretive content of drawing these as lines: net = 0 when
+    #(SAF/c) * ETH_MJ * GME == SAF * JET_MJ * (JET_FUEL_CO2 - e), i.e.
+    #c = ETH_MJ * GME / (JET_MJ * (JET_FUEL_CO2 - e)).
+    print("  break-even conversion, and net at the 0.65 ceiling:")
+    for tag, e in [(t, e) for t, e in CORSIA] + [("nominal", NOMINAL_EMISSIONS)]:
+        c_star = (ETHANOL_MJ_PER_M3 * GASOLINE_MINUS_ETHANOL
+                  / (JET_MJ_PER_M3 * (JET_FUEL_CO2 - e)))
+        reach = "below the ceiling" if c_star < CONVERSION_UPPER_BOUND else "UNREACHABLE"
+        print(f"    {tag:<26} {e:>5} gCO2/MJ -> break-even c = {c_star:.3f} "
+              f"({reach}); net at 0.65 = {net_emissions(e, CONVERSION_UPPER_BOUND):+.3f}")
 
 
 parser = argparse.ArgumentParser(description=__doc__,
