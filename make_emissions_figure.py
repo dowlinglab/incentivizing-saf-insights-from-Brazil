@@ -17,7 +17,7 @@ Letters follow the row order of SI Table S2, so A-E read down that table.
 
 Examples:
     python make_emissions_figure.py
-    python make_emissions_figure.py --output Results_Figures/emissions_v9.png
+    python make_emissions_figure.py --output Results_Figures/emissions_v10.png
 
 Emission factors are the cited ones: sugarcane ethanol 21.3 gCO2/MJ (Seabra et al.)
 and conventional jet fuel 89 gCO2/MJ (CORSIA). The published figure was drawn with
@@ -85,6 +85,36 @@ LITERATURE = [
     ("E", 27.0, 0.27, "pescarini2025strategic"),
 ]
 
+#ICAO's CORSIA default intensities for this exact pathway, plotted as reference
+#values rather than as literature studies.
+#
+#Source: ICAO, "CORSIA Default Life Cycle Emissions Values for CORSIA Eligible
+#Fuels", March 2024, Table 4 -- the table for the Alcohol (ethanol) to jet (ETJ)
+#fuel conversion process -- first row: region Brazil, feedstock Sugarcane, pathway
+#specification "Integrated conversion design". That row gives a Core LCA value of
+#24.1, an ILUC LCA value of 8.7 and an LCEF total of 32.8 gCO2e/MJ, so
+#32.8 = 24.1 + 8.7.
+#
+#Take the row from Table 4 specifically. The preceding table carries a
+#visually similar Brazil/Sugarcane row at 24.0 / 7.3 / 31.3 for a different
+#conversion process, and the later one gives 32.8 / 11.3 / 44.1.
+#
+#Deliberately NOT appended to LITERATURE. That list's row order fixes the A-E
+#labelling against SI Table S2, and check_consistency.py in the manuscript
+#repository parses LITERATURE and cross-checks all five entries against that
+#table. CORSIA is an external reference value, not one of the five studies.
+#
+#Both points sit at the nominal conversion, so they are plotted at nominal_conv --
+#the same variable the star uses -- and --nominal-conv moves all three together.
+CORSIA = [("core", 24.1), ("total", 32.8)]
+
+#Per-letter label offsets, in points. The default puts the letter to the right of
+#its marker; C is overridden to the left because a CORSIA square sits at 32.8 on
+#the nominal-conversion line and C's marker is at 31.0, so a right-hand label
+#would land on top of that square.
+LABEL_OFFSETS = {"C": (-17, -4)}
+DEFAULT_LABEL_OFFSET = (9, -4)
+
 
 def net_emissions(saf_co2, saf_conv):
     """Net CO2 for a 0% -> 50% SAF blend change, Mt CO2/year.
@@ -126,9 +156,22 @@ def build(output, nominal_conv, dpi):
     ax.scatter([e for _, e, _, _ in LITERATURE], [c for _, _, c, _ in LITERATURE],
                color="black", s=60, marker="o", label="Literature", zorder=5)
 
+    #CORSIA defaults, both at the nominal conversion. Unfilled squares so they read
+    #as reference values rather than as another study.
+    ax.scatter([e for _, e in CORSIA], [nominal_conv] * len(CORSIA),
+               facecolors="none", edgecolors="black", linewidths=1.6, s=70,
+               marker="s", label="CORSIA default", zorder=5)
+    #Annotated above, not to the right: to the right would collide with C's label
+    #and with the other square, which is only 8.7 units away on a 0-50 axis.
+    for tag, e in CORSIA:
+        ax.annotate(tag, (e, nominal_conv), textcoords="offset points",
+                    xytext=(0, 12), ha="center", fontsize=11, weight="bold",
+                    zorder=6)
+
     #Letters, not reference numbers -- see the module docstring
     for letter, e, c, _key in LITERATURE:
-        ax.annotate(letter, (e, c), textcoords="offset points", xytext=(9, -4),
+        ax.annotate(letter, (e, c), textcoords="offset points",
+                    xytext=LABEL_OFFSETS.get(letter, DEFAULT_LABEL_OFFSET),
                     fontsize=13, weight="bold", zorder=6)
 
     ax.set_xlabel("SAF LCA Emissions\n(gCO$_2$ MJ$^{-1}$)", weight="bold", fontsize=13)
@@ -149,6 +192,12 @@ def build(output, nominal_conv, dpi):
           f"{superseded:.2f} Mt CO2/yr")
     print("  literature labels: " +
           ", ".join(f"{l}={k}" for l, _, _, k in LITERATURE))
+    print(f"  net emissions along the nominal-conversion line "
+          f"(conversion {nominal_conv}):")
+    for tag, e in [("nominal", NOMINAL_EMISSIONS)] + [(f"CORSIA {t}", e) for t, e in
+                                                     reversed(CORSIA)]:
+        print(f"    {tag:<14} {e:>5} gCO2/MJ -> "
+              f"{net_emissions(e, nominal_conv):6.3f} Mt CO2/yr")
 
 
 parser = argparse.ArgumentParser(description=__doc__,
