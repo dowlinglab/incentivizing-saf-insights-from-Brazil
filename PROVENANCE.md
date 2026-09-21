@@ -108,8 +108,7 @@ A full independent rerun of all 92 MILP instances took 1 h 22 min on the M1 Max
 across five concurrent streams, after loop-invariant expressions were hoisted out
 of the results-writing loops (they had cost ~10 min per instance, more than the
 solve). Every objective value reproduced within the MIP gap it was solved at. See
-[RERUN_REPORT.md](RERUN_REPORT.md) for the comparison and
-[RECONCILIATION.md](RECONCILIATION.md) for what the private repository added.
+[RERUN_REPORT.md](RERUN_REPORT.md) for the historical comparison.
 
 Artifacts, checksummed, with the driver scripts and full environment capture:
 `~/DowlingLab/Papers/incentivizing-saf-repro-archive/2026-07-29/`.

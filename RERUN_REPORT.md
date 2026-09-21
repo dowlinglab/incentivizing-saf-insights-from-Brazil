@@ -1,5 +1,10 @@
 # Reproduction run, 2026-07-27 (confirmed 2026-07-29)
 
+> **Historical report.** The missing-file and reconciliation work described here
+> was subsequently resolved in the private development repository. These findings
+> record the July 2026 audit, not a current list of open issues. Links to retired
+> audit documents below point to their preserved Git history.
+
 > **Confirmed by an independent second run.** The whole suite was rerun on
 > 2026-07-29 under a different concurrency layout (five streams instead of two,
 > with the Case 5 sweep split across three processes and merged). It produced
@@ -8,7 +13,7 @@
 > Case 5 threshold of 2.6 R$/L, and the same integer-cut frequencies. **The
 > divergence from the committed results is deterministic on this platform, not
 > run-to-run thread jitter.** The 2026-07-29 artifacts are archived with checksums
-> and provenance — see [RECONCILIATION.md](RECONCILIATION.md). The 2026-07-27
+> and provenance — see [RECONCILIATION.md](https://github.com/dowlinglab/incentivizing-saf-insights-from-Brazil/blob/19b736b/RECONCILIATION.md). The 2026-07-27
 > artifacts were lost to `/tmp` being cleared; only these findings survived.
 
 
@@ -102,7 +107,7 @@ integer-cut solutions all come from one solver on one machine.
 
 **There is no model drift.** Blend-0 logistics are 0.0 M R$ in both runs, so this
 code is the published formulation, not the `Case*_v2` variant that costs the
-ethanol distribution leg (see [RECONCILIATION.md](RECONCILIATION.md)).
+ethanol distribution leg (see [RECONCILIATION.md](https://github.com/dowlinglab/incentivizing-saf-insights-from-Brazil/blob/19b736b/RECONCILIATION.md)).
 
 ### The caveat it exposes: Table 4's facility counts are not robust
 
@@ -211,7 +216,7 @@ plots `total_incentive = [5.42, 5.41, ...]` from a hardcoded list and leaves
 > published 237 — **Table 4 is internally inconsistent**, only Case 1 including that
 > term. Recommended fix: exclude mill→mill from Stage 1, report it as Stage 0, and
 > correct Case 1 to Stage 1 = 422, Total = 738. See
-> [RECONCILIATION.md](RECONCILIATION.md) §2.
+> [RECONCILIATION.md](https://github.com/dowlinglab/incentivizing-saf-insights-from-Brazil/blob/19b736b/RECONCILIATION.md) §2.
 
 
 Table 4 reports Stage 1 / Stage 2 / Total mass-distances of 455/316/771 Mt·km for
@@ -234,7 +239,7 @@ deliberate, not typos.
 predates this rerun.** The shipped `SupplyChainSummary.ipynb` has never produced
 Table 4's transportation numbers, and how they were computed is not recorded
 anywhere in the repository. This is a larger gap than the ones in
-[MISSING_FILES.md](MISSING_FILES.md), since the numbers appear in a table rather
+[MISSING_FILES.md](https://github.com/dowlinglab/incentivizing-saf-insights-from-Brazil/blob/19b736b/MISSING_FILES.md), since the numbers appear in a table rather
 than a figure.
 
 ## Notebooks and figures
@@ -243,14 +248,14 @@ All four notebooks execute cleanly against the rerun data after the path fixes,
 regenerating all 13 figures in `Results_Figures/`.
 
 One code change was needed: `SensitivtyAnalysis.ipynb` reads a `payment` column
-that no script wrote (see MISSING_FILES.md §2c). It is now derived in
+that no script wrote (see [historical missing-file audit, §2c](https://github.com/dowlinglab/incentivizing-saf-insights-from-Brazil/blob/19b736b/MISSING_FILES.md)). It is now derived in
 `run_mill_specific_incentives.py` as `s[u] / (SAF_u * 1000)`, guarded at
 `SAF_u = 0`, reproducing the committed column's 2.50–2.61 R$/L range.
 
 `integercutanalysis.ipynb` still reads the published
 `integer_cut_organized_data.xlsx`, so its two figures reflect the original
 integer-cut solutions rather than the rerun — there is no script to rebuild that
-spreadsheet (MISSING_FILES.md §2b).
+spreadsheet ([historical missing-file audit, §2b](https://github.com/dowlinglab/incentivizing-saf-insights-from-Brazil/blob/19b736b/MISSING_FILES.md)).
 
 ## Bottom line
 
@@ -275,5 +280,5 @@ Table 4's Mt·km columns — cannot be traced to the shipped code at all.
 | mill-specific objectives are round numbers | **still open** |
 | site sets differ for Cases 1 and 2 | **reframed as a validation** — see the degeneracy section above |
 
-See [RECONCILIATION.md](RECONCILIATION.md) for the full status and
+See [RECONCILIATION.md](https://github.com/dowlinglab/incentivizing-saf-insights-from-Brazil/blob/19b736b/RECONCILIATION.md) for the full status and
 [PROVENANCE.md](PROVENANCE.md) for versions, gaps and solve times.

@@ -165,9 +165,6 @@ Linux from any working directory. What had to be fixed:
    `del_component`/`add_component`. Behavior is unchanged — the mill profit
    lower bound is raised from 0 to `reference_profit1b`.
 
-See [MISSING_FILES.md](MISSING_FILES.md) for what the repository still does not
-contain.
-
 ## 6. Model size does not match the manuscript
 
 The manuscript (Sections "Central Planner"/"Investor", and again for Case 5)

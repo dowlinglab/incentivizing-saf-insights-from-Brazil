@@ -296,5 +296,3 @@ now writes; row *i* corresponds to premium *i* × 0.1 R$/L.
 | [REPRODUCE.md](REPRODUCE.md) | environment setup, how to run each study, portability notes |
 | [PROVENANCE.md](PROVENANCE.md) | software versions, model statistics, MIP gaps, solve times, hardware |
 | [RERUN_REPORT.md](RERUN_REPORT.md) | independent rerun of all 92 instances against the committed results |
-| [RECONCILIATION.md](RECONCILIATION.md) | what the private repository added, and what remains unexplained |
-| [MISSING_FILES.md](MISSING_FILES.md) | audit of every file, sheet and column the code references |
