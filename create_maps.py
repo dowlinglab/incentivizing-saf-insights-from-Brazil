@@ -6,7 +6,7 @@ import os
 import geopandas as gpd
 from shapely.geometry import Point
 
-def create_model_map(results_folder1,results_folder2):
+def create_model_map(results_folder1,results_folder2,output_name='mill_airport_map_regenerated.html'):
 
     this_file_path = os.path.dirname(os.path.realpath(__file__))
 
@@ -15,14 +15,14 @@ def create_model_map(results_folder1,results_folder2):
     results_dir = os.path.join(results_dir1, results_folder2)
 
     # Load the CSV files and the Excel files
-    mill_to_mill_volumes_path = results_dir + '/mill_to_mill_volumes.csv'
-    mill_to_airport_volumes_path = results_dir + '/mill_to_airport_volumes.csv'
-    mill_to_refinery_path = results_dir + '/mill_to_ref_vol_saf.csv'
-    mill_to_ref_path_eth = results_dir + '/mill_to_ref_vol_eth.csv'
-    ref_to_airport_path = results_dir + '/ref_to_air_vol_saf.csv'
-    mills_lat_lon_path = '335MillsLatitudesLongitudes.xlsx'
-    airports_lat_lon_path = 'AirportsLatitudeLongitude.xlsx'
-    refineries_lat_lon_path = 'OilRefineriesLatLong.xlsx'
+    mill_to_mill_volumes_path = os.path.join(results_dir, 'mill_to_mill_volumes.csv')
+    mill_to_airport_volumes_path = os.path.join(results_dir, 'mill_to_airport_volumes.csv')
+    mill_to_refinery_path = os.path.join(results_dir, 'mill_to_ref_vol_saf.csv')
+    mill_to_ref_path_eth = os.path.join(results_dir, 'mill_to_ref_vol_eth.csv')
+    ref_to_airport_path = os.path.join(results_dir, 'ref_to_air_vol_saf.csv')
+    mills_lat_lon_path = os.path.join(this_file_path, '335MillsLatitudesLongitudes.xlsx')
+    airports_lat_lon_path = os.path.join(this_file_path, 'AirportsLatitudeLongitude.xlsx')
+    refineries_lat_lon_path = os.path.join(this_file_path, 'OilRefineriesLatLong.xlsx')
 
     # Load the volume data ensuring proper decimal handling
     mill_to_mill_volumes = pd.read_csv(mill_to_mill_volumes_path, delimiter=',', decimal='.')
@@ -41,18 +41,23 @@ def create_model_map(results_folder1,results_folder2):
     airports_lat_lon_dict = airports_lat_lon.set_index('NOME')[['Latitude', 'Longitude']].to_dict('index')
     refineries_lat_lon_dict = refineries_lat_lon.set_index('name')[['Latitude', 'Longitude']].to_dict('index')
 
-    shapefile_path = "ne_50m_admin_0_countries.shp"
-    world = gpd.read_file(shapefile_path)
+    # Country outline for Brazil. Previously read from ne_50m_admin_0_countries.shp
+    # (Natural Earth 1:50m), which is not part of this repository; dissolving the
+    # GADM state boundaries that ship here gives the same outline with no extra data.
+    brazil_states = gpd.read_file(os.path.join(this_file_path, "gadm41_BRA_1.shp"))
 
-    if world.crs is None:
-        world = world.set_crs(epsg=4326)
+    if brazil_states.crs is None:
+        brazil_states = brazil_states.set_crs(epsg=4326)
     else:
-        world = world.to_crs(epsg=4326)
+        brazil_states = brazil_states.to_crs(epsg=4326)
 
-    print(world.columns)
+    brazil = brazil_states.dissolve(by='GID_0')
 
-    # Filter for Brazil
-    brazil = world[world['NAME'] == 'Brazil']
+    # The dissolved GADM outline carries ~406,000 vertices, against a few thousand in
+    # the Natural Earth 1:50m outline this replaced. Embedded as GeoJSON that inflated
+    # mill_airport_map.html from 1.3 MB to 157 MB. The outline is only drawn as a
+    # border and used for fit_bounds, so simplify to ~1 km (0.01 deg, ~7,500 vertices).
+    brazil = brazil.simplify(0.01, preserve_topology=True).to_frame("geometry")
 
     # Prepare the base map centered on Brazil
     map_center = [-15.788497, -47.879873]  # Center of Brazil
@@ -321,5 +326,8 @@ def create_model_map(results_folder1,results_folder2):
     m.get_root().html.add_child(folium.Element(legend_html))
 
     # Save the map to an HTML file
-    m.save(results_dir + '/mill_airport_map.html')
+    #Defaults to a _regenerated name: the committed mill_airport_map.html files are
+    #the published artifacts (22 of them are tracked), and the SI's case*_*.png maps
+    #are screen captures of them. Pass output_name to overwrite deliberately.
+    m.save(os.path.join(results_dir, output_name))
 
